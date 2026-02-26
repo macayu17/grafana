@@ -406,6 +406,7 @@ var (
 			Generate:    Generate{LegacyFrontend: true},
 			Expression:  "true",
 		},
+
 		{
 			Name:            "kubernetesCorrelations",
 			Description:     "Adds support for Kubernetes correlations",
