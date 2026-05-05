@@ -2530,6 +2530,20 @@
     },
     {
       "metadata": {
+        "name": "frontendService.fullFrontendSettings",
+        "resourceVersion": "1777999168003",
+        "creationTimestamp": "2026-05-05T16:39:28Z"
+      },
+      "spec": {
+        "description": "Frontend service uses GetFrontendSettings to build a full FrontendSettingsDTO for the HTML instead of the partial FSFrontendSettings",
+        "stage": "experimental",
+        "codeowner": "@grafana/grafana-frontend-platform",
+        "hideFromDocs": true,
+        "expression": "false"
+      }
+    },
+    {
+      "metadata": {
         "name": "frontendService.settingsSourceFilter",
         "resourceVersion": "1776170446239",
         "creationTimestamp": "2026-04-14T12:40:46Z"

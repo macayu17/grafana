@@ -969,4 +969,8 @@ const (
 	// FlagDatasourcesUseNewStackInfoToSettingsCache
 	// Use the new cache for datasource.StackInfoToSettings, backend flag
 	FlagDatasourcesUseNewStackInfoToSettingsCache = "datasources.useNewStackInfoToSettingsCache"
+
+	// FlagFrontendServiceFullFrontendSettings
+	// Frontend service uses GetFrontendSettings to build a full FrontendSettingsDTO for the HTML instead of the partial FSFrontendSettings
+	FlagFrontendServiceFullFrontendSettings = "frontendService.fullFrontendSettings"
 )
