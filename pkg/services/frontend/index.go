@@ -12,6 +12,7 @@ import (
 
 	"github.com/grafana/grafana-app-sdk/logging"
 	"github.com/grafana/grafana/pkg/api/dtos"
+	frontendsettings "github.com/grafana/grafana/pkg/api/frontendsettings"
 	"github.com/grafana/grafana/pkg/services/contexthandler"
 	contextmodel "github.com/grafana/grafana/pkg/services/contexthandler/model"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
@@ -28,6 +29,7 @@ type IndexProvider struct {
 	hooksService *hooks.HooksService
 	config       *setting.Cfg
 	license      licensing.Licensing
+	features     featuremgmt.FeatureToggles
 	bootScript   template.JS
 }
 
@@ -39,7 +41,13 @@ type IndexViewData struct {
 	AppTitle  string // TODO: remove and get from request config?
 	AppSubUrl string // TODO: remove and get from request config?
 
+	// Settings is the partial FSFrontendSettings embedded directly in the HTML.
+	// Used when FlagFrontendServiceFullFrontendSettings is disabled.
 	Settings FSFrontendSettings
+
+	// FullSettings is the full FrontendSettingsDTO built by GetFrontendSettings.
+	// When non-nil, it is used in place of Settings.
+	FullSettings *dtos.FrontendSettingsDTO
 
 	Assets      dtos.EntryPointAssets // Includes CDN info
 	DefaultUser dtos.CurrentUser
@@ -70,7 +78,7 @@ var (
 	htmlTemplates = template.Must(template.New("html").Delims("[[", "]]").ParseFS(templatesFS, `*.html`))
 )
 
-func NewIndexProvider(cfg *setting.Cfg, license licensing.Licensing, hooksService *hooks.HooksService) (*IndexProvider, error) {
+func NewIndexProvider(cfg *setting.Cfg, license licensing.Licensing, features featuremgmt.FeatureToggles, hooksService *hooks.HooksService) (*IndexProvider, error) {
 	t := htmlTemplates.Lookup("index.html")
 	if t == nil {
 		return nil, fmt.Errorf("missing index template")
@@ -92,6 +100,7 @@ func NewIndexProvider(cfg *setting.Cfg, license licensing.Licensing, hooksServic
 		hooksService: hooksService,
 		config:       cfg,
 		license:      license,
+		features:     features,
 		//nolint:gosec
 		bootScript: template.JS(bootScriptRaw),
 	}, nil
@@ -130,6 +139,7 @@ func (p *IndexProvider) HandleRequest(writer http.ResponseWriter, request *http.
 	compiledBootScript, _ := ofClient.BooleanValue(ctx, featuremgmt.FlagCompiledBootScript, false, openfeature.TransactionContext(ctx))
 	grafanaAssetSriChecks, _ := ofClient.BooleanValue(ctx, featuremgmt.FlagGrafanaAssetSriChecks, false, openfeature.TransactionContext(ctx))
 	meticulousAIRecorderEnabled, _ := ofClient.BooleanValue(ctx, featuremgmt.FlagGrafanaMeticulousAIRecorder, false, openfeature.TransactionContext(ctx))
+	useGetFrontendSettings, _ := ofClient.BooleanValue(ctx, featuremgmt.FlagFrontendServiceFullFrontendSettings, false, openfeature.TransactionContext(ctx))
 
 	data := IndexViewData{
 		AppTitle:                   "Grafana",
@@ -146,6 +156,11 @@ func (p *IndexProvider) HandleRequest(writer http.ResponseWriter, request *http.
 		MeticulousAIRecordingToken: p.config.MeticulousAIRecordingToken,
 	}
 
+	// TODO: Need to move this into request config or something
+	if useGetFrontendSettings {
+		data.FullSettings = frontendsettings.GetFrontendSettings(ctx, p.config, p.license, p.features)
+	}
+
 	if compiledBootScript {
 		data.BootScript = p.bootScript
 		if p.bootScript == "" {
@@ -160,7 +175,12 @@ func (p *IndexProvider) HandleRequest(writer http.ResponseWriter, request *http.
 	if cookie, err := request.Cookie("login_error"); err == nil && cookie.Value != "" {
 		p.log.Info("request has login_error cookie")
 		// Defaults to a translation key that the frontend will resolve to a localized message
-		data.Settings.LoginError = p.config.OAuthLoginErrorMessage // TODO: get from request config
+		loginError := p.config.OAuthLoginErrorMessage // TODO: get from request config
+		if data.FullSettings != nil {
+			data.FullSettings.LoginError = loginError
+		} else {
+			data.Settings.LoginError = loginError
+		}
 
 		cookiePath := "/"
 		if p.config.AppSubURL != "" {
@@ -191,14 +211,23 @@ func (p *IndexProvider) HandleRequest(writer http.ResponseWriter, request *http.
 }
 
 func (p *IndexProvider) runIndexDataHooks(reqCtx *contextmodel.ReqContext, data *IndexViewData) {
+	if data.FullSettings != nil {
+		legacyIndexViewData := dtos.IndexViewData{
+			Settings: &dtos.FrontendSettingsDTO{
+				BuildInfo: data.FullSettings.BuildInfo,
+			},
+		}
+		p.hooksService.RunIndexDataHooks(&legacyIndexViewData, reqCtx)
+		data.FullSettings.BuildInfo = legacyIndexViewData.Settings.BuildInfo
+		return
+	}
+
 	// Create a dummy struct to pass to the hooks, and then extract the data back out from it
 	legacyIndexViewData := dtos.IndexViewData{
 		Settings: &dtos.FrontendSettingsDTO{
 			BuildInfo: data.Settings.BuildInfo,
 		},
 	}
-
 	p.hooksService.RunIndexDataHooks(&legacyIndexViewData, reqCtx)
-
 	data.Settings.BuildInfo = legacyIndexViewData.Settings.BuildInfo
 }

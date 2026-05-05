@@ -63,7 +63,7 @@ type frontendService struct {
 func ProvideFrontendService(cfg *setting.Cfg, features featuremgmt.FeatureToggles, promGatherer prometheus.Gatherer, promRegister prometheus.Registerer, license licensing.Licensing, hooksService *hooks.HooksService) (*frontendService, error) {
 	logger := log.New("frontend-service")
 
-	index, err := NewIndexProvider(cfg, license, hooksService)
+	index, err := NewIndexProvider(cfg, license, features, hooksService)
 	if err != nil {
 		return nil, err
 	}
