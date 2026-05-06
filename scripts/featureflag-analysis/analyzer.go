@@ -133,10 +133,27 @@ func buildIndex(roots []string) (fileIndex, error) {
 	return idx, nil
 }
 
+// flagConstantName converts a flag key to its generated Go constant name.
+// Dotted flag keys (e.g. "datasource.useNewCRUDAPIs") have their dots stripped
+// and each segment capitalized: FlagDatasourceUseNewCRUDAPIs. Single-segment
+// keys (e.g. "react19") just get the first letter capitalized: FlagReact19.
+func flagConstantName(name string) string {
+	var b strings.Builder
+	b.WriteString("Flag")
+	for _, p := range strings.Split(name, ".") {
+		if p == "" {
+			continue
+		}
+		b.WriteString(strings.ToUpper(p[:1]))
+		b.WriteString(p[1:])
+	}
+	return b.String()
+}
+
 // classifyFlag returns the migration status for a flag, or ("", false) if the
 // flag has no usage anywhere and should be skipped.
 func classifyFlag(name string, idx fileIndex) (migrationStatus, bool) {
-	flagConst := "Flag" + strings.ToUpper(name[:1]) + name[1:]
+	flagConst := flagConstantName(name)
 
 	// beOld: same-line check is reliable — IsEnabled calls are always single-line.
 	// beNew: file-level filter already restricted to OpenFeature-importing files
@@ -202,7 +219,7 @@ func classify(beOld, beNew, feOld, feNew bool) (migrationStatus, bool) {
 //   - the flag result is not stored in a struct field
 //   - context is passed at the call site
 func isBEEasy(name string, idx fileIndex) bool {
-	patterns := []string{`"` + name + `"`, "Flag" + strings.ToUpper(name[:1]) + name[1:]}
+	patterns := []string{`"` + name + `"`, flagConstantName(name)}
 
 	for path, content := range idx.beOld {
 		hasRef := false
