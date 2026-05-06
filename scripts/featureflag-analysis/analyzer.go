@@ -25,10 +25,32 @@ type flagInfo struct {
 // We walk the repo once and store file contents in memory so per-flag
 // lookups are fast string searches rather than repeated disk reads.
 type fileIndex struct {
-	beOld map[string]string // Go files containing "IsEnabled"
-	beNew map[string]string // Go files containing "openfeature"
+	beOld map[string]string // Go files containing "IsEnabled" (legacy featuremgmt API)
+	beNew map[string]string // Go files importing OpenFeature SDK or referencing a known OF wrapper
 	feOld map[string]string // TS/TSX files containing "featureToggles" or "getFeatureToggle"
-	feNew map[string]string // TS/TSX files containing "useBooleanFlagValue" or "getFeatureFlagClient"
+	feNew map[string]string // TS/TSX files importing @openfeature/* or using a known OF hook/client helper
+}
+
+// beNewMarkers identify Go files that participate in OpenFeature evaluation —
+// either by importing the SDK directly, or by using an internal wrapper that
+// forwards to it. Any file matching one of these is in scope for OF detection.
+var beNewMarkers = []string{
+	"open-feature/go-sdk", // direct SDK import path
+	"openfeature.",        // package-qualified usage (covers wrappers re-exporting symbols)
+	"OpenFeatureClient",   // common wrapper field/type name
+	"openFeatureClient",   // unexported variant
+}
+
+// feNewMarkers identify TS/TSX files that participate in OpenFeature evaluation
+// — direct SDK imports or known internal hook/client helpers that wrap the SDK.
+var feNewMarkers = []string{
+	"@openfeature",          // import scope (covers @openfeature/web-sdk, react-sdk, etc.)
+	"useBooleanFlagValue",   // OF web-sdk hook
+	"useStringFlagValue",    // OF web-sdk hook
+	"useNumberFlagValue",    // OF web-sdk hook
+	"useObjectFlagValue",    // OF web-sdk hook
+	"getFeatureFlagClient",  // grafana wrapper
+	"useFlag(",              // OF react-sdk hook (paren disambiguates from "useFlags")
 }
 
 func buildIndex(roots []string) (fileIndex, error) {
@@ -63,7 +85,7 @@ func buildIndex(roots []string) (fileIndex, error) {
 				if strings.Contains(s, "IsEnabled") {
 					idx.beOld[path] = s
 				}
-				if strings.Contains(s, "openfeature") {
+				if containsAnyMarker(s, beNewMarkers) {
 					idx.beNew[path] = s
 				}
 				return nil
@@ -98,7 +120,7 @@ func buildIndex(roots []string) (fileIndex, error) {
 				if strings.Contains(s, "featureToggles") || strings.Contains(s, "getFeatureToggle") {
 					idx.feOld[path] = s
 				}
-				if strings.Contains(s, "useBooleanFlagValue") || strings.Contains(s, "getFeatureFlagClient") {
+				if containsAnyMarker(s, feNewMarkers) {
 					idx.feNew[path] = s
 				}
 				return nil
@@ -117,10 +139,15 @@ func classifyFlag(name string, idx fileIndex) (migrationStatus, bool) {
 	flagConst := "Flag" + strings.ToUpper(name[:1]) + name[1:]
 
 	// beOld: same-line check is reliable — IsEnabled calls are always single-line.
-	// beNew: use a small window because client.Boolean(...) calls are sometimes
-	// formatted across multiple lines (flag constant on a separate line from the call).
+	// beNew: file-level filter already restricted to OpenFeature-importing files
+	// (or files using a known OF wrapper). For each flag reference, accept it as
+	// an OF call site if it appears within a few lines of "(ctx," — this matches
+	// any OF SDK eval shape (Boolean/String/Int/Float/Object, plain or *ValueDetails)
+	// without an explicit method-name allowlist. Excludes the window if any line
+	// contains IsEnabled (which would be a legacy-API call site that just happens
+	// to live in an OF-aware file).
 	beOld := flagOnSameLine(idx.beOld, []string{`"` + name + `"`, flagConst}, "IsEnabled")
-	beNew := flagNearLine(idx.beNew, []string{`"` + name + `"`, flagConst}, 4, "Boolean", "BooleanValue")
+	beNew := flagInCallSite(idx.beNew, []string{`"` + name + `"`, flagConst}, 4)
 
 	// FE old: property access config.featureToggles.flagName — match as whole word
 	// to avoid false positives from substrings (e.g. "alert" in "alertingBacktesting")
@@ -332,6 +359,63 @@ func flagNearLine(files map[string]string, flagPatterns []string, window int, ap
 					}
 				}
 			}
+		}
+	}
+	return false
+}
+
+// ctxCallRe matches a function call whose first argument is a request context.
+// Covers the common shapes seen in grafana:
+//   - `(ctx,`               — locally bound context.Context
+//   - `(c.Req.Context(),`   — gin/web framework request context
+//   - `(r.Context(),`       — net/http request context
+//   - `(context.Background(),` — background calls
+// The shape may span lines (flag constant on its own line), so the regex
+// matches across whitespace including newlines.
+var ctxCallRe = regexp.MustCompile(`\(\s*(?:ctx|[a-zA-Z_][a-zA-Z0-9_.]*\.Context\(\)|context\.Background\(\)|context\.TODO\(\))[\s,)]`)
+
+// flagInCallSite reports whether any file contains a flag reference inside what
+// looks like an OpenFeature evaluation call: flag pattern within `window` lines
+// of a `(ctx,` call shape and no `IsEnabled` in the same window. The file-level
+// filter (idx.beNew) already restricts the search to OF-importing files, so we
+// don't need to enumerate specific OF method names — any call taking ctx as its
+// first argument and the flag as a subsequent argument counts.
+func flagInCallSite(files map[string]string, flagPatterns []string, window int) bool {
+	for _, content := range files {
+		lines := strings.Split(content, "\n")
+		for i, line := range lines {
+			hasFlag := false
+			for _, fp := range flagPatterns {
+				if strings.Contains(line, fp) {
+					hasFlag = true
+					break
+				}
+			}
+			if !hasFlag {
+				continue
+			}
+			// Reject only if the flag's own line is a legacy IsEnabled call.
+			// Don't widen this to the window — an OF call site can sit a few
+			// lines away from an unrelated IsEnabled call for a different flag.
+			if strings.Contains(line, "IsEnabled") {
+				continue
+			}
+			start := max(0, i-window)
+			end := min(len(lines), i+window+1)
+			windowText := strings.Join(lines[start:end], "\n")
+			if ctxCallRe.MatchString(windowText) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// containsAnyMarker reports whether s contains any of the given markers.
+func containsAnyMarker(s string, markers []string) bool {
+	for _, m := range markers {
+		if strings.Contains(s, m) {
+			return true
 		}
 	}
 	return false
