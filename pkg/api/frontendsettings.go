@@ -141,6 +141,7 @@ func (hs *HTTPServer) getFrontendSettings(c *contextmodel.ReqContext) (*dtos.Fro
 //
 //nolint:gocyclo
 func (hs *HTTPServer) buildFrontendSettings(c *contextmodel.ReqContext) (*dtos.FrontendSettingsDTO, error) {
+	// [todo] just rename this method to getFrontendSettings
 	feSettings := frontendsettings.GetFrontendSettings(c.Req.Context(), hs.Cfg, hs.License, hs.Features)
 
 	// Per-user: hide version info for anonymous users when configured.

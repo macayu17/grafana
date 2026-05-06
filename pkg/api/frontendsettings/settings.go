@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/grafana/grafana/pkg/api/dtos"
+	"github.com/grafana/grafana/pkg/plugins"
 	"github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
 	"github.com/grafana/grafana/pkg/services/folder"
@@ -39,6 +40,11 @@ func GetFrontendSettings(ctx context.Context, cfg *setting.Cfg, license licensin
 	featureToggles["topnav"] = true
 
 	s := &dtos.FrontendSettingsDTO{
+
+		Panels:      make(map[string]plugins.PanelDTO, 0),
+		Apps:        make(map[string]*plugins.AppDTO, 0),
+		Datasources: make(map[string]plugins.DataSourceDTO, 0),
+
 		MinRefreshInterval:   cfg.MinRefreshInterval,
 		AppUrl:               cfg.AppURL,
 		AppSubUrl:            cfg.AppSubURL,

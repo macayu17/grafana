@@ -181,7 +181,13 @@
         window.__grafanaAssetSriChecksEnabled = true;
       [[end]]
 
+      [[if .FullSettings]]
+        // When enabled, don't require a call to /bootdata
+        window.__grafanaFullSettingsEnabled = true;
+      [[end]]
+
       window.__grafanaPublicDashboardAccessToken = [[.PublicDashboardAccessToken]];
+
       // global config
       window.grafanaBootData = {
         _femt: true, // isFrontendService() needs this

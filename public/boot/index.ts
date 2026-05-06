@@ -152,7 +152,11 @@ async function fetchBootData(): Promise<FetchBootDataResult> {
 /**
  * Loads the boot data from the server, retrying if it's unavailable.
  **/
-function loadBootData(): Promise<{ redirect: string } | BootApiResponse> {
+function loadBootData(): Promise<{ redirect: string } | BootApiResponse | undefined> {
+  // if ('__grafanaFullSettingsEnabled' in window) {
+  //   return Promise.resolve(undefined);
+  // }
+
   return new Promise((resolve, reject) => {
     const attemptFetch = async () => {
       try {
@@ -197,17 +201,24 @@ async function initGrafana() {
   const bootData = await loadBootData();
 
   // If the backend wants us to redirect, we reject this promise to avoid booting the rest of the app.
-  if ('redirect' in bootData) {
+  if (bootData && 'redirect' in bootData) {
     return Promise.reject({ redirect: bootData.redirect });
   }
 
   window.grafanaBootData.settings = {
-    ...bootData.settings,
+    // ...bootData?.settings,
     ...window.grafanaBootData.settings,
   };
-  window.grafanaBootData.navTree = bootData.navTree;
-  window.grafanaBootData.user = bootData.user;
-  if (bootData.settings?.buildInfo?.edition) {
+
+  // if (bootData?.navTree) {
+  //   window.grafanaBootData.navTree = bootData.navTree;
+  // }
+
+  if (bootData?.user) {
+    window.grafanaBootData.user = bootData.user;
+  }
+
+  if (bootData?.settings?.buildInfo?.edition) {
     window.grafanaBootData.settings.buildInfo.edition = bootData.settings.buildInfo.edition;
   }
 
