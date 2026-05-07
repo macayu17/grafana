@@ -1451,7 +1451,8 @@
       "metadata": {
         "name": "compiledBootScript",
         "resourceVersion": "1775117897717",
-        "creationTimestamp": "2026-04-02T08:18:17Z"
+        "creationTimestamp": "2026-04-02T08:18:17Z",
+        "deletionTimestamp": "2026-05-07T07:19:16Z"
       },
       "spec": {
         "description": "Boots the frontend using the boot.js script built from TS instead of the embedded boot script",

@@ -127,7 +127,6 @@ func (p *IndexProvider) HandleRequest(writer http.ResponseWriter, request *http.
 
 	ofClient := openfeature.NewDefaultClient()
 	renderBindingSupported, _ := ofClient.BooleanValue(ctx, featuremgmt.FlagReportRenderBinding, false, openfeature.TransactionContext(ctx))
-	compiledBootScript, _ := ofClient.BooleanValue(ctx, featuremgmt.FlagCompiledBootScript, false, openfeature.TransactionContext(ctx))
 	grafanaAssetSriChecks, _ := ofClient.BooleanValue(ctx, featuremgmt.FlagGrafanaAssetSriChecks, false, openfeature.TransactionContext(ctx))
 	meticulousAIRecorderEnabled, _ := ofClient.BooleanValue(ctx, featuremgmt.FlagGrafanaMeticulousAIRecorder, false, openfeature.TransactionContext(ctx))
 
@@ -144,13 +143,7 @@ func (p *IndexProvider) HandleRequest(writer http.ResponseWriter, request *http.
 		AssetSriChecksEnabled:      grafanaAssetSriChecks,
 		MeticulousAIEnabled:        meticulousAIRecorderEnabled,
 		MeticulousAIRecordingToken: p.config.MeticulousAIRecordingToken,
-	}
-
-	if compiledBootScript {
-		data.BootScript = p.bootScript
-		if p.bootScript == "" {
-			p.log.Error("compiledBootScript feature flag enabled but boot.js not found — falling back to inline boot script.")
-		}
+		BootScript:                 p.bootScript,
 	}
 
 	// TODO -- reevaluate with mt authnz
