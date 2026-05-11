@@ -25,6 +25,7 @@ import (
 	"github.com/grafana/grafana/pkg/apimachinery/identity"
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
 	secrets "github.com/grafana/grafana/pkg/registry/apis/secret/contracts"
+	"github.com/grafana/grafana/pkg/services/folder"
 )
 
 type objectForStorage struct {
@@ -79,6 +80,18 @@ func (v *objectForStorage) finish(ctx context.Context, err error, secrets secret
 	return nil
 }
 
+func (s *Storage) verifyFolder(obj utils.GrafanaMetaAccessor) error {
+	if s.opts.EnableFolderSupport {
+		if obj.GetFolder() == "" {
+			obj.SetFolder(folder.GeneralFolderUID) // mutate the folder
+			//return apierrors.NewBadRequest("missing folder annotation")
+		}
+	} else if obj.GetFolder() != "" {
+		return apierrors.NewBadRequest("folders not supported in this resource")
+	}
+	return nil
+}
+
 // Called on create
 func (s *Storage) prepareObjectForStorage(ctx context.Context, newObject runtime.Object) (objectForStorage, error) {
 	v := objectForStorage{}
@@ -103,8 +116,8 @@ func (s *Storage) prepareObjectForStorage(ctx context.Context, newObject runtime
 	if obj.GetUID() == "" {
 		obj.SetUID(types.UID(uuid.NewString()))
 	}
-	if obj.GetFolder() != "" && !s.opts.EnableFolderSupport {
-		return v, apierrors.NewBadRequest(fmt.Sprintf("folders are not supported for: %s", s.gr.String()))
+	if err = s.verifyFolder(obj); err != nil {
+		return v, err
 	}
 	if s.opts.MaximumNameLength > 0 && len(obj.GetName()) > s.opts.MaximumNameLength {
 		return v, apierrors.NewBadRequest(fmt.Sprintf("name exceeds maximum length (%d)", s.opts.MaximumNameLength))
@@ -210,13 +223,12 @@ func (s *Storage) prepareObjectForUpdate(ctx context.Context, updateObject runti
 	if err != nil {
 		return v, err
 	}
+	if err = s.verifyFolder(obj); err != nil {
+		return v, err
+	}
 
 	// Check if we should bump the generation
 	if obj.GetFolder() != previous.GetFolder() {
-		if !s.opts.EnableFolderSupport {
-			return v, apierrors.NewBadRequest(fmt.Sprintf("folders are not supported for: %s", s.gr.String()))
-		}
-		// TODO: check that we can move the folder?
 		if err := s.ensureRepoManagedByParentFolder(ctx, obj); err != nil {
 			return v, err
 		}

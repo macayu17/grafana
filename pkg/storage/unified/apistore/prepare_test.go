@@ -207,6 +207,7 @@ func TestPrepareObjectForStorage(t *testing.T) {
 				Annotations: map[string]string{
 					"A":                           "B",
 					utils.AnnoKeyUpdatedTimestamp: "2025-12-17T01:01:00Z",
+					utils.AnnoKeyFolder:           "fff",
 				},
 				UID: "XXX",
 			},
