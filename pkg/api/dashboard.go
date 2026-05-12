@@ -621,7 +621,7 @@ func (hs *HTTPServer) saveDashboardViaK8s(c *contextmodel.ReqContext, cmd dashbo
 		"id":        meta.GetDeprecatedInternalID(), //nolint:staticcheck
 		"uid":       meta.GetName(),
 		"url":       dashboards.GetDashboardFolderURL(false, meta.GetName(), slug),
-		"folderUid": meta.GetFolder(),
+		"folderUid": folder.LegacyFolderUID(meta.GetFolder()),
 	})
 }
 

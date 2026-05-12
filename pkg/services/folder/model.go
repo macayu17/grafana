@@ -114,6 +114,27 @@ func (f *Folder) IsGeneral() bool {
 	return f.ID == GeneralFolder.ID && f.Title == GeneralFolder.Title
 }
 
+// LegacyFolderUID maps the canonical folder annotation value used by the
+// unified storage layer back to the empty-for-root convention expected by
+// legacy API responses (/api/dashboards, /api/folders, /api/search).
+//
+// The apistore now stores "general" explicitly for resources at the root, but
+// legacy responses have always returned "" for that case.
+func LegacyFolderUID(uid string) string {
+	if uid == GeneralFolderUID {
+		return ""
+	}
+	return uid
+}
+
+// IsRootFolderUID reports whether the given folder UID identifies the root /
+// "general" folder. Use this for "does this resource have a parent folder?"
+// checks where both "" (legacy) and "general" (canonical) must be treated as
+// the root.
+func IsRootFolderUID(uid string) bool {
+	return uid == "" || uid == GeneralFolderUID
+}
+
 func (f *Folder) WithURL() *Folder {
 	if f == nil || f.URL != "" {
 		return f
