@@ -181,7 +181,11 @@ func TestIntegrationLibraryElementGranularPermissions(t *testing.T) {
 		})
 
 		t.Run("When viewer doesn't have read access to folder2, they cannot create library element in folder2", func(t *testing.T) {
-			createLibraryElement(t, grafanaListedAddr, "granular-viewer", "granular-viewer", folder2UID, http.StatusBadRequest)
+			// After #123300 (folder service stopped returning BadRequest for
+			// access-denied), the legacy create handler propagates the
+			// underlying 403 from folderService.Get instead of falling back
+			// to BadRequest.
+			createLibraryElement(t, grafanaListedAddr, "granular-viewer", "granular-viewer", folder2UID, http.StatusForbidden)
 		})
 
 		t.Run("When viewer doesn't have write access to general folder, they cannot create library element in general", func(t *testing.T) {
@@ -208,7 +212,10 @@ func TestIntegrationLibraryElementGranularPermissions(t *testing.T) {
 		})
 
 		t.Run("When viewer doesn't have read access to folder2, they cannot get library element from folder2", func(t *testing.T) {
-			getLibraryElement(t, grafanaListedAddr, "granular-viewer", "granular-viewer", inFolder2, http.StatusNotFound)
+			// After #123300, the get handler surfaces the underlying 403
+			// from access control rather than a generic 404 — both convey
+			// "you can't see it" but 403 reflects the real reason.
+			getLibraryElement(t, grafanaListedAddr, "granular-viewer", "granular-viewer", inFolder2, http.StatusForbidden)
 		})
 
 		t.Run("When viewer has limited folder access, they only see library elements from accessible folders", func(t *testing.T) {

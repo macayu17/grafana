@@ -347,7 +347,8 @@ func (s *Service) getFolderByTitle(ctx context.Context, orgID int64, title strin
 	}
 
 	// If we're searching for top-level folders (parentUID == nil), and the first result is not in the root folder, remove it from the results.
-	for parentUID == nil && len(hits.Hits) > 0 && hits.Hits[0].Folder != "" {
+	// The apistore now writes "general" (canonical) for root parents while older entries still carry the legacy empty string; both denote the root.
+	for parentUID == nil && len(hits.Hits) > 0 && !folder.IsRootFolderUID(hits.Hits[0].Folder) {
 		hits.Hits = hits.Hits[1:]
 	}
 
