@@ -109,7 +109,7 @@ func validateOnCreate(ctx context.Context, f *folders.Folder, getter parentsGett
 	}
 
 	parentName := meta.GetFolder()
-	if parentName == "" {
+	if folder.IsRootFolderUID(parentName) {
 		return nil // OK, we do not need to validate the tree
 	}
 
@@ -170,7 +170,7 @@ func validateOnUpdate(ctx context.Context,
 	// before and wasn't too deep. This move will make it more shallow.
 	//
 	// We also don't need to validate circular references because the root folder cannot have a parent.
-	if newParent == folder.RootFolderUID {
+	if folder.IsRootFolderUID(newParent) {
 		return nil
 	}
 
@@ -228,7 +228,7 @@ func validateOnUpdate(ctx context.Context,
 // If the old parent depth is >= the new parent depth, the folder was already valid
 // and this move won't make descendants exceed max depth.
 func canSkipChildrenCheck(ctx context.Context, oldFolder utils.GrafanaMetaAccessor, getter rest.Getter, parents parentsGetter, newParentDepth int) bool {
-	if oldFolder.GetFolder() == folder.RootFolderUID {
+	if folder.IsRootFolderUID(oldFolder.GetFolder()) {
 		return false
 	}
 

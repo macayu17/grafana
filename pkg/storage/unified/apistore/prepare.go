@@ -282,7 +282,7 @@ func (s *Storage) prepareObjectForUpdate(ctx context.Context, updateObject runti
 }
 
 func (s *Storage) ensureRepoManagedByParentFolder(ctx context.Context, obj utils.GrafanaMetaAccessor) error {
-	if !s.opts.EnableFolderSupport || obj.GetFolder() == "" {
+	if !s.opts.EnableFolderSupport || folder.IsRootFolderUID(obj.GetFolder()) {
 		return nil
 	}
 	folder, err := s.getParentFolder(ctx, obj)

@@ -231,7 +231,7 @@ func (s *Service) SearchFolders(ctx context.Context, query folder.SearchFoldersQ
 			URI:         "db/" + slug,
 			URL:         dashboards.GetFolderURL(item.Name, slug),
 			Type:        model.DashHitFolder,
-			FolderUID:   item.Folder,
+			FolderUID:   folder.LegacyFolderUID(item.Folder),
 			Description: item.Description,
 		}
 	}
