@@ -348,5 +348,4 @@ func TestIntegrationLegacyDashboardEndpointsContract(t *testing.T) {
 		require.Equal(t, folder.GeneralFolderUID, folderMeta.GetFolder(),
 			"root folder %s should carry the \"general\" folder annotation internally", parentUID)
 	})
-
 }
