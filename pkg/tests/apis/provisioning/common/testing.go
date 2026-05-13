@@ -79,6 +79,9 @@ const (
 	// into grafana.app/folder for resources parented at the root. Tests must
 	// treat this and the legacy empty string as equivalent root sentinels.
 	rootFolderUID = "general"
+
+	// RootFolderUID is the exported alias for use by other test packages.
+	RootFolderUID = rootFolderUID
 )
 
 // isRootFolderUID reports whether the given grafana.app/folder annotation
@@ -86,6 +89,13 @@ const (
 // both mean root.
 func isRootFolderUID(uid string) bool {
 	return uid == "" || uid == rootFolderUID
+}
+
+// IsRootFolderUID is the exported alias of isRootFolderUID for other test
+// packages that need to assert root-folder semantics on the grafana.app/folder
+// annotation without re-defining the helper locally.
+func IsRootFolderUID(uid string) bool {
+	return isRootFolderUID(uid)
 }
 
 //nolint:gosec // Test RSA private key (generated for testing purposes only, never used in production)
@@ -1422,10 +1432,17 @@ func deleteAndWait(ctx context.Context, client dynamic.ResourceInterface, timeou
 			}
 			return fmt.Errorf("deleteAndWait: context cancelled: %w", ctx.Err())
 		case <-timer.C:
-			if lastErr != nil {
-				return fmt.Errorf("deleteAndWait: timed out with %d items remaining (last delete error: %v)", len(remaining.Items), lastErr)
+			// Include each remaining item's name + finalizers in the error so a
+			// hung cleanup points directly at which controller is failing to
+			// remove its finalizer, not just a bare count.
+			names := make([]string, 0, len(remaining.Items))
+			for _, item := range remaining.Items {
+				names = append(names, fmt.Sprintf("%s(finalizers=%v)", item.GetName(), item.GetFinalizers()))
 			}
-			return fmt.Errorf("deleteAndWait: timed out with %d items remaining", len(remaining.Items))
+			if lastErr != nil {
+				return fmt.Errorf("deleteAndWait: timed out with %d items remaining [%s] (last delete error: %v)", len(remaining.Items), strings.Join(names, ", "), lastErr)
+			}
+			return fmt.Errorf("deleteAndWait: timed out with %d items remaining [%s]", len(remaining.Items), strings.Join(names, ", "))
 		case <-ticker.C:
 		}
 	}

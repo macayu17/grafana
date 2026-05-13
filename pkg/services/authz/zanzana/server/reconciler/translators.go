@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
 	"github.com/grafana/grafana/pkg/registry/apis/iam/roleeffective"
 	"github.com/grafana/grafana/pkg/services/authz/zanzana/common"
+	foldermodel "github.com/grafana/grafana/pkg/services/folder"
 )
 
 // TranslateFolderToTuples converts a Folder CRD to parent relationship tuples.
@@ -32,8 +33,11 @@ func TranslateFolderToTuples(obj *unstructured.Unstructured) ([]*openfgav1.Tuple
 
 	parentFolder := accessor.GetFolder()
 
-	// No parent means this is a root-level folder
-	if parentFolder == "" {
+	// Root-level folders have no parent. The unified storage layer now writes
+	// the canonical "general" sentinel here instead of the legacy empty
+	// string; treat both as "no parent" so we don't emit a bogus tuple
+	// referencing the synthetic "general" folder.
+	if foldermodel.IsRootFolderUID(parentFolder) {
 		return nil, nil
 	}
 
