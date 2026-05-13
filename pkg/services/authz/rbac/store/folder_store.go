@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/infra/tracing"
+	foldermodel "github.com/grafana/grafana/pkg/services/folder"
 	"github.com/grafana/grafana/pkg/storage/legacysql"
 	"github.com/grafana/grafana/pkg/storage/unified/sql/sqltemplate"
 )
@@ -172,7 +173,15 @@ func (s *APIFolderStore) ListFolders(ctx context.Context, ns types.NamespaceInfo
 
 		folder := Folder{UID: object.GetName()}
 		parent := object.GetFolder()
-		if parent != "" {
+		// The unified apistore now writes the canonical "general" sentinel as
+		// the parent annotation for root-parented folders where it used to be
+		// empty. The general folder isn't a real Zanzana/rbac entity — if it
+		// appears as a parent in the tree, ancestors of any nested folder
+		// would walk up to "general" and (incorrectly) match scopes such as
+		// folders:uid:general granted by fixed:folders.general:reader for the
+		// Viewer role, leaking inherited access to every root-parented
+		// folder. Treat both "" and "general" as "no parent".
+		if parent != "" && !foldermodel.IsRootFolderUID(parent) {
 			folder.ParentUID = &parent
 		}
 

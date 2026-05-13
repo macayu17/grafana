@@ -181,11 +181,12 @@ func TestIntegrationLibraryElementGranularPermissions(t *testing.T) {
 		})
 
 		t.Run("When viewer doesn't have read access to folder2, they cannot create library element in folder2", func(t *testing.T) {
-			// After #123300 (folder service stopped returning BadRequest for
-			// access-denied), the legacy create handler propagates the
-			// underlying 403 from folderService.Get instead of falling back
-			// to BadRequest.
-			createLibraryElement(t, grafanaListedAddr, "granular-viewer", "granular-viewer", folder2UID, http.StatusForbidden)
+			// The folder is hidden from the caller by the unified storage
+			// access check, so folderService.Get returns ErrFolderNotFound
+			// and the legacy create handler falls back to BadRequest. This
+			// matches the historical "you can't see the folder" semantics
+			// (a 4xx that doesn't disclose existence).
+			createLibraryElement(t, grafanaListedAddr, "granular-viewer", "granular-viewer", folder2UID, http.StatusBadRequest)
 		})
 
 		t.Run("When viewer doesn't have write access to general folder, they cannot create library element in general", func(t *testing.T) {
@@ -212,10 +213,11 @@ func TestIntegrationLibraryElementGranularPermissions(t *testing.T) {
 		})
 
 		t.Run("When viewer doesn't have read access to folder2, they cannot get library element from folder2", func(t *testing.T) {
-			// After #123300, the get handler surfaces the underlying 403
-			// from access control rather than a generic 404 — both convey
-			// "you can't see it" but 403 reflects the real reason.
-			getLibraryElement(t, grafanaListedAddr, "granular-viewer", "granular-viewer", inFolder2, http.StatusForbidden)
+			// The unified storage access check hides folder2 from the caller
+			// entirely; folderService.Get returns ErrFolderNotFound, which
+			// the legacy get handler maps to 404 (NotFound) — k8s-style
+			// "you don't see this resource" rather than 403.
+			getLibraryElement(t, grafanaListedAddr, "granular-viewer", "granular-viewer", inFolder2, http.StatusNotFound)
 		})
 
 		t.Run("When viewer has limited folder access, they only see library elements from accessible folders", func(t *testing.T) {
