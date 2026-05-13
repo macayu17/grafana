@@ -14,16 +14,6 @@ import (
 	foldermodel "github.com/grafana/grafana/pkg/services/folder"
 )
 
-// normalizeFolderUID maps the canonical "general" root sentinel written by the
-// unified apistore back to the empty string the folder tree uses internally to
-// denote root. Anything else passes through unchanged.
-func normalizeFolderUID(uid string) string {
-	if uid == foldermodel.GeneralFolderUID {
-		return ""
-	}
-	return uid
-}
-
 // FolderTree contains the entire set of folders (at a given snapshot in time) of the Grafana instance.
 // The folders are portrayed as a tree, where a folder has a parent, up until the root folder.
 // The root folder is special-cased as a folder that exists, but is not itself stored. It has no ID, no title, and no data, but will return `true` for OK bools.
@@ -59,7 +49,7 @@ func (t *folderTree) In(folder string) bool {
 
 // in is the unlocked implementation of In used by helpers that already hold the mutex.
 func (t *folderTree) in(folder string) bool {
-	folder = normalizeFolderUID(folder)
+	folder = foldermodel.LegacyFolderUID(folder)
 	_, ok := t.tree[folder]
 	return ok || folder == ""
 }
@@ -105,8 +95,8 @@ func (t *folderTree) DirPath(folder, baseFolder string) (fid Folder, ok bool) {
 func (t *folderTree) dirPath(folder, baseFolder string) (fid Folder, ok bool) {
 	// Normalize so the canonical "general" root sentinel is treated as "" for
 	// the lookups below; the tree stores root parents as "" internally.
-	folder = normalizeFolderUID(folder)
-	baseFolder = normalizeFolderUID(baseFolder)
+	folder = foldermodel.LegacyFolderUID(folder)
+	baseFolder = foldermodel.LegacyFolderUID(baseFolder)
 	// Inline In() logic to avoid deadlock when called from other methods that hold locks
 	folderInTree := t.in(folder)
 	baseFolderInTree := t.in(baseFolder)
@@ -141,7 +131,7 @@ func (t *folderTree) dirPath(folder, baseFolder string) (fid Folder, ok bool) {
 
 // Add inserts or updates a folder entry and keeps the UID and path indexes in sync.
 func (t *folderTree) Add(folder Folder, parent string) {
-	parent = normalizeFolderUID(parent)
+	parent = foldermodel.LegacyFolderUID(parent)
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	_, exists := t.tree[folder.ID]
@@ -240,7 +230,7 @@ func (t *folderTree) AddUnstructured(item *unstructured.Unstructured) error {
 		return fmt.Errorf("extract meta accessor: %w", err)
 	}
 
-	parent := normalizeFolderUID(meta.GetFolder())
+	parent := foldermodel.LegacyFolderUID(meta.GetFolder())
 	folder := Folder{
 		Title:    meta.FindTitle(item.GetName()),
 		ID:       item.GetName(),
@@ -264,7 +254,7 @@ func NewFolderTreeFromResourceList(resources *provisioning.ResourceList) FolderT
 			continue
 		}
 
-		parent := normalizeFolderUID(rf.Folder)
+		parent := foldermodel.LegacyFolderUID(rf.Folder)
 		tree[rf.Name] = parent
 		folderIDs[rf.Name] = Folder{
 			Title:        rf.Title,

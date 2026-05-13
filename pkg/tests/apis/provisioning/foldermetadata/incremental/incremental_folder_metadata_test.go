@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	provisioning "github.com/grafana/grafana/apps/provisioning/pkg/apis/provisioning/v0alpha1"
+	foldermodel "github.com/grafana/grafana/pkg/services/folder"
 	"github.com/grafana/grafana/pkg/tests/apis/provisioning/common"
 	"github.com/grafana/grafana/pkg/util/testutil"
 )
@@ -598,7 +599,7 @@ func TestIntegrationProvisioning_IncrementalSync_GracefulFolderRename(t *testing
 		// The unified storage layer now stamps root-parented resources with
 		// the canonical "general" sentinel; legacy entries may still carry
 		// the empty string. Either denotes "no parent".
-		require.True(t, common.IsRootFolderUID(folderParent),
+		require.True(t, foldermodel.IsRootFolderUID(folderParent),
 			"root-level folder should have no parent, got %q", folderParent)
 
 		common.RequireRepoFolders(t, helper.Folders, ctx, repoName, []string{"new-team"})
@@ -764,7 +765,7 @@ func TestIntegrationProvisioning_IncrementalSync_GracefulFolderRename(t *testing
 		folderParent, _, _ := unstructured.NestedString(folderAfter.Object, "metadata", "annotations", "grafana.app/folder")
 		// Root parents may be empty (legacy) or "general" (canonical) after the
 		// apistore mutation; both mean "no parent".
-		require.True(t, common.IsRootFolderUID(folderParent),
+		require.True(t, foldermodel.IsRootFolderUID(folderParent),
 			"folder moved to root should have no parent, got %q", folderParent)
 
 		common.RequireRepoFolders(t, helper.Folders, ctx, repoName, []string{"parent", "my-folder"})
@@ -833,7 +834,7 @@ func TestIntegrationProvisioning_IncrementalSync_GracefulFolderRename(t *testing
 		parentAnnotation, _, _ := unstructured.NestedString(parentAfter.Object, "metadata", "annotations", "grafana.app/folder")
 		// Root parents are written as "general" by the apistore now; empty is
 		// the legacy form. Both are valid "no parent" sentinels.
-		require.True(t, common.IsRootFolderUID(parentAnnotation),
+		require.True(t, foldermodel.IsRootFolderUID(parentAnnotation),
 			"root-level parent should have no parent annotation, got %q", parentAnnotation)
 
 		// Verify child folder updated in place and still parented under the renamed parent.

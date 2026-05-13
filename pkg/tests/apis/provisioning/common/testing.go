@@ -48,6 +48,7 @@ import (
 	"github.com/grafana/grafana/pkg/infra/db"
 	"github.com/grafana/grafana/pkg/registry/apis/provisioning/jobs"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
+	foldermodel "github.com/grafana/grafana/pkg/services/folder"
 	"github.com/grafana/grafana/pkg/setting"
 	"github.com/grafana/grafana/pkg/tests/apis"
 	"github.com/grafana/grafana/pkg/tests/testinfra"
@@ -74,29 +75,7 @@ const (
 	// get a larger budget — bumping every step would slow the common case
 	// for no benefit.
 	waitTimeoutFolderCleanup = 4 * WaitTimeoutDefault
-
-	// rootFolderUID is the canonical value the unified storage layer writes
-	// into grafana.app/folder for resources parented at the root. Tests must
-	// treat this and the legacy empty string as equivalent root sentinels.
-	rootFolderUID = "general"
-
-	// RootFolderUID is the exported alias for use by other test packages.
-	RootFolderUID = rootFolderUID
 )
-
-// isRootFolderUID reports whether the given grafana.app/folder annotation
-// value identifies the root folder. Empty (legacy) and "general" (canonical)
-// both mean root.
-func isRootFolderUID(uid string) bool {
-	return uid == "" || uid == rootFolderUID
-}
-
-// IsRootFolderUID is the exported alias of isRootFolderUID for other test
-// packages that need to assert root-folder semantics on the grafana.app/folder
-// annotation without re-defining the helper locally.
-func IsRootFolderUID(uid string) bool {
-	return isRootFolderUID(uid)
-}
 
 //nolint:gosec // Test RSA private key (generated for testing purposes only, never used in production)
 const TestGithubPrivateKeyPEM = "-----BEGIN RSA PRIVATE KEY-----\n" + // trufflehog:ignore
@@ -787,12 +766,12 @@ func (h *ProvisioningTestHelper) ValidateManagedDashboardsFolderMetadata(t *test
 		sourcePath, _, _ := unstructured.NestedString(d.Object, "metadata", "annotations", "grafana.app/sourcePath")
 		isNested := strings.Contains(sourcePath, "/")
 
-		folder, _, _ := unstructured.NestedString(d.Object, "metadata", "annotations", "grafana.app/folder")
+		folderUID, _, _ := unstructured.NestedString(d.Object, "metadata", "annotations", "grafana.app/folder")
 		if isNested {
-			require.NotEmpty(t, folder, "dashboard should be in a non-empty folder")
-			require.NotEqual(t, rootFolderUID, folder, "nested dashboard should not be parented at the root")
+			require.NotEmpty(t, folderUID, "dashboard should be in a non-empty folder")
+			require.False(t, foldermodel.IsRootFolderUID(folderUID), "nested dashboard should not be parented at the root, got %q", folderUID)
 		} else {
-			require.True(t, isRootFolderUID(folder), "root dashboard folder annotation should be empty or %q, got %q", rootFolderUID, folder)
+			require.True(t, foldermodel.IsRootFolderUID(folderUID), "root dashboard folder annotation should be empty or %q, got %q", foldermodel.GeneralFolderUID, folderUID)
 		}
 
 		managerID, _, _ := unstructured.NestedString(d.Object, "metadata", "annotations", "grafana.app/managerId")
@@ -2214,9 +2193,9 @@ func RequireRepoDashboardParent(t *testing.T, dashboardClient *apis.K8sResourceC
 				continue
 			}
 			got := annotations["grafana.app/folder"]
-			if isRootFolderUID(expectedFolderUID) {
-				assert.True(c, isRootFolderUID(got),
-					"dashboard %q parent folder: expected root (\"\" or %q), got %q", sourcePath, rootFolderUID, got)
+			if foldermodel.IsRootFolderUID(expectedFolderUID) {
+				assert.True(c, foldermodel.IsRootFolderUID(got),
+					"dashboard %q parent folder: expected root (\"\" or %q), got %q", sourcePath, foldermodel.GeneralFolderUID, got)
 			} else {
 				assert.Equal(c, expectedFolderUID, got, "dashboard %q parent folder", sourcePath)
 			}
@@ -2522,9 +2501,9 @@ func RequireFolderState(t *testing.T, folderClient *apis.K8sResourceClient, fold
 		annotations := obj.GetAnnotations()
 		assert.Equal(c, expectedSourcePath, annotations["grafana.app/sourcePath"], "source path")
 		gotParent := annotations["grafana.app/folder"]
-		if isRootFolderUID(expectedParent) {
-			assert.True(c, isRootFolderUID(gotParent),
-				"parent folder: expected root (\"\" or %q), got %q", rootFolderUID, gotParent)
+		if foldermodel.IsRootFolderUID(expectedParent) {
+			assert.True(c, foldermodel.IsRootFolderUID(gotParent),
+				"parent folder: expected root (\"\" or %q), got %q", foldermodel.GeneralFolderUID, gotParent)
 		} else {
 			assert.Equal(c, expectedParent, gotParent, "parent folder")
 		}
