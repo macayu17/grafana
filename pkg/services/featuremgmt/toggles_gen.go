@@ -562,7 +562,7 @@ const (
 	// Enables the logs builder mode for the Azure Monitor data source
 	FlagAzureMonitorLogsBuilderEditor = "azureMonitorLogsBuilderEditor"
 
-	// FlagAzureMonitorBatchAPI
+// FlagAzureMonitorBatchAPI
 	// Enables the Metrics Batch API for the Azure Monitor data source, allowing up to 50 resources to be queried in a single request
 	FlagAzureMonitorBatchAPI = "azureMonitorBatchAPI"
 
