@@ -970,10 +970,10 @@ func TestCheckMoveAccess(t *testing.T) {
 			allows:    []allow{canCreateInNew},
 		},
 		{
-			name:      "verb allowed on source only under new parent is escalation",
-			newParent: newParentUID,
-			oldParent: oldParentUID,
-			allows:    []allow{canCreateInNew, canUpdateOnSourceUnderNew},
+			name:        "verb allowed on source only under new parent is escalation",
+			newParent:   newParentUID,
+			oldParent:   oldParentUID,
+			allows:      []allow{canCreateInNew, canUpdateOnSourceUnderNew},
 			expectedErr: "folders.accessEscalation",
 		},
 		{
@@ -989,9 +989,9 @@ func TestCheckMoveAccess(t *testing.T) {
 			allows:    []allow{{verb: utils.VerbCreate, folder: ""}},
 		},
 		{
-			name:      "move to root denied without create at root",
-			newParent: folder.RootFolderUID,
-			oldParent: oldParentUID,
+			name:        "move to root denied without create at root",
+			newParent:   folder.RootFolderUID,
+			oldParent:   oldParentUID,
 			expectedErr: "folders.forbiddenMove",
 		},
 	}
