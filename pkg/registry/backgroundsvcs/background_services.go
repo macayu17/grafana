@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/cloudmigration"
 	"github.com/grafana/grafana/pkg/services/dashboards/service"
 	"github.com/grafana/grafana/pkg/services/dashboardsnapshots"
+	"github.com/grafana/grafana/pkg/services/folder/folderimpl"
 	"github.com/grafana/grafana/pkg/services/grpcserver"
 	ldapapi "github.com/grafana/grafana/pkg/services/ldap/api"
 	"github.com/grafana/grafana/pkg/services/live"
@@ -80,6 +81,7 @@ func ProvideBackgroundServiceRegistry(
 	installSync installsync.Syncer,
 	zanzanaService *authz.EmbeddedZanzanaService,
 	sqlStore *sqlstore.SQLStore,
+	folderCascadeWatcher *folderimpl.CascadeWatcher,
 	// Need to make sure these are initialized, is there a better place to put them?
 	_ dashboardsnapshots.Service,
 	_ serviceaccounts.Service,
@@ -130,6 +132,7 @@ func ProvideBackgroundServiceRegistry(
 		installSync,
 		zanzanaService,
 		sqlStore,
+		folderCascadeWatcher,
 	)
 }
 
