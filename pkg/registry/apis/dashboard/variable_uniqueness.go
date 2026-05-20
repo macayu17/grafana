@@ -14,7 +14,19 @@ import (
 	dashv2beta1 "github.com/grafana/grafana/apps/dashboard/pkg/apis/dashboard/v2beta1"
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
 	"github.com/grafana/grafana/pkg/services/apiserver/client"
+	"github.com/grafana/grafana/pkg/services/folder"
 )
+
+// variableFolderScope returns "" for any root sentinel (legacy empty,
+// "general", or the canonical "root" the apistore stamps) and the folder UID
+// otherwise. Uniqueness queries below treat root as "global scope" via the
+// empty value, so all three sentinels must collapse to "".
+func variableFolderScope(folderUID string) string {
+	if folder.IsRootFolderUID(folderUID) {
+		return ""
+	}
+	return folderUID
+}
 
 const (
 	// postCreateListMaxAttempts bounds the retry loop used to tolerate
@@ -47,7 +59,10 @@ func findVariableNameConflict(list *unstructured.UnstructuredList, folderUID, ex
 			continue
 		}
 
-		itemFolderUID := item.GetLabels()[variableFolderLabelKey]
+		// Old rows may carry a root sentinel ("general"/"root") in the
+		// folder label; collapse those to "" so they line up with the
+		// caller's folderUID (which we already collapsed via variableFolderScope).
+		itemFolderUID := variableFolderScope(item.GetLabels()[variableFolderLabelKey])
 		if folderUID == "" {
 			// Global scope ignores folder-scoped entries.
 			if itemFolderUID != "" {
@@ -84,7 +99,7 @@ func (b *DashboardsAPIBuilder) validateVariableNameUniqueness(
 	}
 
 	variableName := getVariableName(variable.Spec)
-	folderUID := accessor.GetFolder()
+	folderUID := variableFolderScope(accessor.GetFolder())
 	listOptions := buildVariableNameListOptions(variableName, folderUID)
 	nsInfo, err := authlib.ParseNamespace(namespace)
 	if err != nil {
@@ -136,7 +151,7 @@ func resolveVariableNameConflictAfterCreate(
 	}
 
 	specName := getVariableName(created.Spec)
-	folderUID := createdAccessor.GetFolder()
+	folderUID := variableFolderScope(createdAccessor.GetFolder())
 	namespace := created.GetNamespace()
 	nsInfo, err := authlib.ParseNamespace(namespace)
 	if err != nil {
@@ -219,7 +234,10 @@ func filterVariablesInScope(list *unstructured.UnstructuredList, folderUID strin
 	}
 	filtered := make([]unstructured.Unstructured, 0, len(list.Items))
 	for _, item := range list.Items {
-		itemFolderUID := item.GetLabels()[variableFolderLabelKey]
+		// Old rows may carry a root sentinel in the folder label; collapse
+		// to "" so they line up with the caller's already-collapsed
+		// folderUID.
+		itemFolderUID := variableFolderScope(item.GetLabels()[variableFolderLabelKey])
 		if folderUID == "" {
 			if itemFolderUID != "" {
 				continue

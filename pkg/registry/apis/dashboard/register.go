@@ -588,7 +588,7 @@ func (b *DashboardsAPIBuilder) validateVariableCreate(ctx context.Context, a adm
 		return fmt.Errorf("error getting variable meta accessor: %w", err)
 	}
 
-	if !a.IsDryRun() && accessor.GetFolder() != "" {
+	if !a.IsDryRun() && !folder.IsRootFolderUID(accessor.GetFolder()) {
 		id, err := identity.GetRequester(ctx)
 		if err != nil {
 			return fmt.Errorf("error getting requester: %w", err)
@@ -646,7 +646,7 @@ func (b *DashboardsAPIBuilder) validateVariableUpdate(ctx context.Context, a adm
 		return fmt.Errorf("error getting new variable meta accessor: %w", err)
 	}
 
-	if !a.IsDryRun() && newAccessor.GetFolder() != oldAccessor.GetFolder() && newAccessor.GetFolder() != "" {
+	if !a.IsDryRun() && newAccessor.GetFolder() != oldAccessor.GetFolder() && !folder.IsRootFolderUID(newAccessor.GetFolder()) {
 		id, err := identity.GetRequester(ctx)
 		if err != nil {
 			return fmt.Errorf("error getting requester: %w", err)

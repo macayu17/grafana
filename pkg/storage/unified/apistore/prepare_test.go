@@ -709,8 +709,8 @@ func TestVerifyFolder(t *testing.T) {
 		require.Error(t, err)
 		require.True(t, apierrors.IsInvalid(err), "expected an Invalid (422) status error, got %T: %v", err, err)
 
-		statusErr, ok := err.(*apierrors.StatusError)
-		require.True(t, ok, "error should be a *StatusError, got %T", err)
+		var statusErr *apierrors.StatusError
+		require.True(t, errors.As(err, &statusErr), "error should be a *StatusError, got %T", err)
 		require.Equal(t, int32(http.StatusUnprocessableEntity), statusErr.ErrStatus.Code)
 		require.Equal(t, v1.StatusReasonInvalid, statusErr.ErrStatus.Reason)
 		require.NotNil(t, statusErr.ErrStatus.Details)

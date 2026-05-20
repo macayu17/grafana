@@ -896,9 +896,11 @@ func (s *Service) checkPermission(ctx context.Context, scopeMap map[string]bool,
 		return scopeMap[""], nil
 	}
 
-	// If creating a resource that goes in a folder, but no folder is specified,
-	// assume parent folder is the general folder
-	if req.Verb == utils.VerbCreate && t.HasFolderSupport() && req.ParentFolder == "" {
+	// If creating a resource that goes in a folder, but the parent points at
+	// the synthetic root (empty, "general", or the canonical "root" that the
+	// apistore now stamps), pin the check to the "general" folder UID so
+	// permissions granted on fixed:folders.general:writer match.
+	if req.Verb == utils.VerbCreate && t.HasFolderSupport() && foldermodel.IsRootFolderUID(req.ParentFolder) {
 		req.ParentFolder = accesscontrol.GeneralFolderUID
 	}
 
