@@ -639,7 +639,9 @@ func convertHttpSearchRequestToResourceSearchRequest(queryParams url.Values, use
 	} else if folder != "" {
 		// The apistore canonicalises root resources to folder=="general"
 		// (see pkg/storage/unified/apistore/prepare.go verifyFolder), so the
-		// search index now stores "general" rather than "" for the root.
+		// search index always carries an explicit folder value — "general"
+		// for root, the parent UID otherwise — and a single equality match
+		// against the requested value is enough.
 		searchRequest.Options.Fields = append(searchRequest.Options.Fields, &resourcepb.Requirement{
 			Key:      "folder",
 			Operator: "=",
