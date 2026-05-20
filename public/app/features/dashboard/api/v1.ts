@@ -23,6 +23,7 @@ import {
 import { getDashboardUrl } from 'app/features/dashboard-scene/utils/getDashboardUrl';
 import { type DeleteDashboardResponse } from 'app/features/manage-dashboards/types';
 import { buildSourceLink, removeExistingSourceLinks } from 'app/features/provisioning/utils/sourceLink';
+import { isRootFolderUID } from 'app/features/search/constants';
 import { type DashboardDataDTO, type DashboardDTO, type SaveDashboardResponseDTO } from 'app/types/dashboard';
 
 import { type SaveDashboardCommand } from '../components/SaveDashboard/types';
@@ -200,9 +201,14 @@ export class K8sDashboardAPI implements DashboardAPI<DashboardDTO, Dashboard> {
         result.dashboard.id = parseInt(dash.metadata.labels[DeprecatedInternalId], 10);
       }
 
-      if (dash.metadata.annotations?.[AnnoKeyFolder]) {
+      const folderAnnotation = dash.metadata.annotations?.[AnnoKeyFolder];
+      // The apistore stamps a root sentinel ("root", historically "general")
+      // on root-parented dashboards. There is no folder resource to fetch in
+      // that case — leave folder fields unset so the UI renders the
+      // dashboard as living at the root.
+      if (folderAnnotation && !isRootFolderUID(folderAnnotation)) {
         try {
-          const folder = await getFolderByUidFacade(dash.metadata.annotations[AnnoKeyFolder]);
+          const folder = await getFolderByUidFacade(folderAnnotation);
           result.meta.folderTitle = folder.title;
           result.meta.folderUrl = folder.url;
           result.meta.folderUid = folder.uid;
@@ -214,7 +220,7 @@ export class K8sDashboardAPI implements DashboardAPI<DashboardDTO, Dashboard> {
           }
           // we still want to save the folder uid so that we can properly handle disabling the folder picker in Settings -> General
           // this is an edge case when user has edit access to a dashboard but doesn't have access to the folder
-          result.meta.folderUid = dash.metadata.annotations?.[AnnoKeyFolder];
+          result.meta.folderUid = folderAnnotation;
         }
       }
 

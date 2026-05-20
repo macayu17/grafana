@@ -6,6 +6,7 @@ import { getDashboardSrv } from 'app/features/dashboard/services/DashboardSrv';
 import { type DashboardDataDTO } from 'app/types/dashboard';
 
 import { AnnoKeyFolder, AnnoKeyUpdatedBy, type ManagerKind, type ResourceList } from '../../apiserver/types';
+import { isRootFolderUID } from '../constants';
 import {
   type DashboardSearchHit,
   DashboardSearchItemType,
@@ -210,7 +211,7 @@ export function searchHitsToDashboardSearchHits(searchHits: SearchHit[]): Dashbo
       sortMeta: 0, // Default value for deleted items
     };
 
-    if (hit.folder && hit.folder !== 'general') {
+    if (hit.folder && !isRootFolderUID(hit.folder)) {
       dashboardHit.folderUid = hit.folder;
     }
 
