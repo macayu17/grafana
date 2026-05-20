@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	claims "github.com/grafana/authlib/types"
 	"go.opentelemetry.io/otel/trace"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,6 +20,7 @@ import (
 	"k8s.io/kube-openapi/pkg/spec3"
 	"k8s.io/kube-openapi/pkg/validation/spec"
 
+	claims "github.com/grafana/authlib/types"
 	dashboardv0alpha1 "github.com/grafana/grafana/apps/dashboard/pkg/apis/dashboard/v0alpha1"
 	folders "github.com/grafana/grafana/apps/folder/pkg/apis/folder/v1"
 	"github.com/grafana/grafana/pkg/apimachinery/identity"
@@ -637,11 +637,9 @@ func convertHttpSearchRequestToResourceSearchRequest(queryParams url.Values, use
 		// hijacks the "name" query param to only search for shared dashboard UIDs
 		names = append(names, dashboardUIDs...)
 	} else if folder != "" {
-		// The apistore canonicalises root resources to folder=="general"
-		// (see pkg/storage/unified/apistore/prepare.go verifyFolder), so the
-		// search index always carries an explicit folder value — "general"
-		// for root, the parent UID otherwise — and a single equality match
-		// against the requested value is enough.
+		if foldermodel.IsRootFolderUID(folder) {
+			folder = foldermodel.RootFolderName
+		}
 		searchRequest.Options.Fields = append(searchRequest.Options.Fields, &resourcepb.Requirement{
 			Key:      "folder",
 			Operator: "=",

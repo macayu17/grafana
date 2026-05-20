@@ -27,6 +27,7 @@ import (
 	"github.com/grafana/grafana/pkg/registry/apis/iam/legacy"
 	"github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/authz/rbac/store"
+	foldermodel "github.com/grafana/grafana/pkg/services/folder"
 	"github.com/grafana/grafana/pkg/storage/legacysql"
 )
 
@@ -940,16 +941,17 @@ func (s *Service) checkInheritedPermissions(ctx context.Context, scopeMap map[st
 		return false, nil
 	}
 
-	// The unified apistore now writes the canonical "general" sentinel as the
-	// parent annotation for root-parented resources where it used to be
-	// empty. For non-create verbs the synthetic general folder is not a real
-	// parent that grants inheritance — granting a read role on
-	// folders:uid:general (e.g. fixed:folders.general:reader, which exists so
-	// viewers can see the root in the UI) must not leak access to every
-	// root-parented resource. For the create verb the special-case above (see
-	// checkPermission) deliberately uses general as the inheritance target,
-	// so we keep that path working.
-	if req.ParentFolder == accesscontrol.GeneralFolderUID && req.Verb != utils.VerbCreate {
+	// The unified apistore stamps an explicit root sentinel
+	// (folder.RootFolderName, historically also "general") as the parent
+	// annotation for root-parented resources where it used to be empty.
+	// For non-create verbs the synthetic root is not a real parent that
+	// grants inheritance — granting a read role on folders:uid:general
+	// (e.g. fixed:folders.general:reader, which exists so viewers can see
+	// the root in the UI) must not leak access to every root-parented
+	// resource. For the create verb the special case above (see
+	// checkPermission) deliberately uses general as the inheritance
+	// target, so we keep that path working.
+	if foldermodel.IsRootFolderUID(req.ParentFolder) && req.Verb != utils.VerbCreate {
 		return false, nil
 	}
 

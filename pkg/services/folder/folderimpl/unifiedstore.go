@@ -231,12 +231,14 @@ func (ss *FolderUnifiedStoreImpl) GetChildren(ctx context.Context, q folder.GetC
 		q.Page = 1
 	}
 
-	// Root-level resources may be indexed with either an empty folder field
-	// (legacy convention) or the canonical "general" sentinel that the apistore
-	// now writes. Match both when listing children of the root.
+	// Root-level resources may be indexed with the canonical
+	// folder.RootFolderName ("root") sentinel that the apistore now writes,
+	// the legacy /api/ "general" sentinel, or an empty folder field from
+	// rows written before the apistore migration. Match all three when
+	// listing children of the root so we don't silently drop any of them.
 	folderValues := []string{q.UID}
 	if q.UID == "" {
-		folderValues = append(folderValues, folder.GeneralFolderUID)
+		folderValues = append(folderValues, folder.GeneralFolderUID, folder.RootFolderName)
 	}
 	fields := []*resourcepb.Requirement{{
 		Key:      resource.SEARCH_FIELD_FOLDER,

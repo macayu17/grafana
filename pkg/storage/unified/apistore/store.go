@@ -245,7 +245,7 @@ func (s *Storage) convertToObject(ctx context.Context, data []byte, obj runtime.
 	if s.opts.EnableFolderSupport {
 		m, _ := utils.MetaAccessor(obj)
 		if m != nil && m.GetFolder() == "" {
-			m.SetFolder(folder.GeneralFolderUID)
+			m.SetFolder(folder.RootFolderName)
 		}
 	}
 

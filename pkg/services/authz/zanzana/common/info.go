@@ -10,6 +10,7 @@ import (
 	iamv0alpha1 "github.com/grafana/grafana/apps/iam/pkg/apis/iam/v0alpha1"
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
 	"github.com/grafana/grafana/pkg/services/accesscontrol"
+	foldermodel "github.com/grafana/grafana/pkg/services/folder"
 )
 
 type typeInfo struct {
@@ -62,7 +63,11 @@ func NewResourceInfoFromCheck(r *authzv1.CheckRequest) ResourceInfo {
 	if r.GetVerb() == utils.VerbCreate {
 		if resource.IsFolderResource() && resource.name == "" {
 			resource.name = accesscontrol.GeneralFolderUID
-		} else if resource.HasFolderSupport() && (resource.folder == "" || resource.folder == accesscontrol.GeneralFolderUID) {
+		} else if resource.HasFolderSupport() && foldermodel.IsRootFolderUID(resource.folder) {
+			// Zanzana's permission graph models the root as the synthetic
+			// "general" folder, regardless of which sentinel ("", "general",
+			// or "root") the apistore stamped on the request. Normalize so
+			// the create check resolves against that one entity.
 			resource.folder = accesscontrol.GeneralFolderUID
 			// The general folder is a real Zanzana entity for the purpose of
 			// "can I create here?" — mark this so FolderIdent surfaces it.
@@ -108,7 +113,11 @@ func NewResourceInfoFromBatchCheckItem(item *authzv1.BatchCheckItem) ResourceInf
 	if item.GetVerb() == utils.VerbCreate {
 		if resource.IsFolderResource() && resource.name == "" {
 			resource.name = accesscontrol.GeneralFolderUID
-		} else if resource.HasFolderSupport() && (resource.folder == "" || resource.folder == accesscontrol.GeneralFolderUID) {
+		} else if resource.HasFolderSupport() && foldermodel.IsRootFolderUID(resource.folder) {
+			// Zanzana's permission graph models the root as the synthetic
+			// "general" folder, regardless of which sentinel ("", "general",
+			// or "root") the apistore stamped on the request. Normalize so
+			// the create check resolves against that one entity.
 			resource.folder = accesscontrol.GeneralFolderUID
 			// See NewResourceInfoFromCheck for the rationale.
 			resource.rootForCreate = true
@@ -184,15 +193,16 @@ func (r ResourceInfo) FolderIdent() string {
 	if r.folder == "" {
 		return ""
 	}
-	// The unified apistore now stamps the canonical "general" sentinel on
-	// root-parented resources where the annotation used to be empty. For
-	// stored resources this is a "no parent folder" marker and must yield
-	// the empty ident here — otherwise folder-inherited permissions on the
-	// synthetic general folder would leak access to every root-parented
-	// resource. The one exception is the create-verb special case
-	// (rootForCreate=true) where general is a real Zanzana entity used to
-	// answer "may I create at root?".
-	if r.folder == accesscontrol.GeneralFolderUID && !r.rootForCreate {
+	// The unified apistore stamps an explicit root sentinel
+	// (folder.RootFolderName, historically also "general") on root-parented
+	// resources where the annotation used to be empty. For stored resources
+	// this is a "no parent folder" marker and must yield the empty ident
+	// here — otherwise folder-inherited permissions on the synthetic
+	// general folder would leak access to every root-parented resource.
+	// The one exception is the create-verb special case
+	// (rootForCreate=true) where the general folder is a real Zanzana
+	// entity used to answer "may I create at root?".
+	if foldermodel.IsRootFolderUID(r.folder) && !r.rootForCreate {
 		return ""
 	}
 

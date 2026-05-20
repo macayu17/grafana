@@ -10,7 +10,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general",
+      "folder": "root",
       "score": 0.128,
       "explain": {
         "children": [

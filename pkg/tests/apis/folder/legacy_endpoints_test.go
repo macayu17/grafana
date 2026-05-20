@@ -21,13 +21,13 @@ import (
 
 // TestIntegrationLegacyFolderEndpointsContract asserts that the legacy
 // /api/folders and /api/search responses remain unchanged after the apistore
-// began storing root-level resources with the canonical "general" folder
-// annotation (see prepare.go verifyFolder).
+// began storing root-level resources with an explicit folder.RootFolderName
+// ("root") annotation (see prepare.go verifyFolder).
 //
 // Specifically: root folders / dashboards must continue to surface an empty
-// parentUid/folderUid (not "general") on every documented legacy response
-// field, even though the underlying object now carries the annotation
-// internally.
+// parentUid/folderUid (not "root" and not "general") on every documented
+// legacy response field, even though the underlying object now carries the
+// annotation internally.
 func TestIntegrationLegacyFolderEndpointsContract(t *testing.T) {
 	testutil.SkipIntegrationTestInShortMode(t)
 
@@ -52,7 +52,7 @@ func TestIntegrationLegacyFolderEndpointsContract(t *testing.T) {
 	// Create one folder at the root and one nested below it via the legacy
 	// /api/folders POST endpoint. The root folder is the case most affected
 	// by the annotation change because the apistore now mutates its folder
-	// annotation to "general".
+	// annotation to folder.RootFolderName.
 	rootCreate := apis.DoRequest(helper, apis.RequestParams{
 		User:   client.Args.User,
 		Method: http.MethodPost,
@@ -136,9 +136,11 @@ func TestIntegrationLegacyFolderEndpointsContract(t *testing.T) {
 					"GET /api/folders root listing must return empty parentUid for root folder %s; got %q",
 					rootUID, hit.ParentUID)
 			}
-			// No hit should ever surface "general" as its parent.
+			// No hit should ever surface an internal root sentinel as its parent.
 			require.NotEqual(t, folder.GeneralFolderUID, hit.ParentUID,
 				"GET /api/folders leaked canonical \"general\" parent for %s", hit.UID)
+			require.NotEqual(t, folder.RootFolderName, hit.ParentUID,
+				"GET /api/folders leaked canonical %q parent for %s", folder.RootFolderName, hit.UID)
 		}
 		require.True(t, foundRoot, "root folder %s missing from GET /api/folders response: %s", rootUID, string(resp.Body))
 	})
@@ -183,6 +185,8 @@ func TestIntegrationLegacyFolderEndpointsContract(t *testing.T) {
 			}
 			require.NotEqual(t, folder.GeneralFolderUID, hit.FolderUID,
 				"/api/search leaked canonical \"general\" folderUid for %s", hit.UID)
+			require.NotEqual(t, folder.RootFolderName, hit.FolderUID,
+				"/api/search leaked canonical %q folderUid for %s", folder.RootFolderName, hit.UID)
 		}
 		require.NotNil(t, rootHit, "root folder missing from /api/search: %s", string(resp.Body))
 		require.NotNil(t, childHit, "child folder missing from /api/search: %s", string(resp.Body))
@@ -309,6 +313,8 @@ func TestIntegrationLegacyDashboardEndpointsContract(t *testing.T) {
 			}
 			require.NotEqual(t, folder.GeneralFolderUID, hit.FolderUID,
 				"/api/search leaked canonical \"general\" folderUid for dashboard %s", hit.UID)
+			require.NotEqual(t, folder.RootFolderName, hit.FolderUID,
+				"/api/search leaked canonical %q folderUid for dashboard %s", folder.RootFolderName, hit.UID)
 		}
 		require.NotNil(t, rootHit, "root dashboard missing from /api/search: %s", string(resp.Body))
 		require.NotNil(t, nestedHit, "nested dashboard missing from /api/search: %s", string(resp.Body))
@@ -318,10 +324,10 @@ func TestIntegrationLegacyDashboardEndpointsContract(t *testing.T) {
 		require.Equal(t, parentUID, nestedHit.FolderUID)
 	})
 
-	t.Run("k8s storage still stores the canonical \"general\" annotation for root", func(t *testing.T) {
+	t.Run("k8s storage stores the canonical \"root\" annotation for root", func(t *testing.T) {
 		// This is the inverse of the legacy contract: the k8s representation
-		// must continue to carry the canonical sentinel, even though the
-		// legacy responses hide it.
+		// must carry the canonical RootFolderName sentinel internally, even
+		// though the legacy responses hide it as "".
 		dashGVR := schema.GroupVersionResource{
 			Group:    "dashboard.grafana.app",
 			Version:  "v1beta1",
@@ -335,8 +341,8 @@ func TestIntegrationLegacyDashboardEndpointsContract(t *testing.T) {
 		require.NoError(t, err)
 		meta, err := utils.MetaAccessor(got)
 		require.NoError(t, err)
-		require.Equal(t, folder.GeneralFolderUID, meta.GetFolder(),
-			"root dashboard %s should carry the \"general\" folder annotation internally", rootDashUID)
+		require.Equal(t, folder.RootFolderName, meta.GetFolder(),
+			"root dashboard %s should carry the %q folder annotation internally", rootDashUID, folder.RootFolderName)
 
 		gotFolder, err := helper.GetResourceClient(apis.ResourceClientArgs{
 			User: user,
@@ -345,7 +351,7 @@ func TestIntegrationLegacyDashboardEndpointsContract(t *testing.T) {
 		require.NoError(t, err)
 		folderMeta, err := utils.MetaAccessor(gotFolder)
 		require.NoError(t, err)
-		require.Equal(t, folder.GeneralFolderUID, folderMeta.GetFolder(),
-			"root folder %s should carry the \"general\" folder annotation internally", parentUID)
+		require.Equal(t, folder.RootFolderName, folderMeta.GetFolder(),
+			"root folder %s should carry the %q folder annotation internally", parentUID, folder.RootFolderName)
 	})
 }

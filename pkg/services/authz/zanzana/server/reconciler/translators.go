@@ -33,10 +33,11 @@ func TranslateFolderToTuples(obj *unstructured.Unstructured) ([]*openfgav1.Tuple
 
 	parentFolder := accessor.GetFolder()
 
-	// Root-level folders have no parent. The unified storage layer now writes
-	// the canonical "general" sentinel here instead of the legacy empty
-	// string; treat both as "no parent" so we don't emit a bogus tuple
-	// referencing the synthetic "general" folder.
+	// Root-level folders have no parent. The unified storage layer stamps
+	// an explicit root sentinel (folder.RootFolderName, historically also
+	// "general") here instead of the legacy empty string; IsRootFolderUID
+	// accepts all three so we don't emit a bogus tuple referencing the
+	// synthetic root folder.
 	if foldermodel.IsRootFolderUID(parentFolder) {
 		return nil, nil
 	}

@@ -9,7 +9,7 @@
         "gdev",
         "panel-tests"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -20,7 +20,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -31,7 +31,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -46,7 +46,7 @@
         "state-timeline",
         "transform"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -57,7 +57,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -68,7 +68,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -79,7 +79,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -90,7 +90,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -101,7 +101,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -112,7 +112,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -123,7 +123,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -134,7 +134,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -145,7 +145,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -156,13 +156,13 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
       "name": "timeseries-formats",
       "title": "Panel Tests - Timeseries - Supported input formats",
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -173,7 +173,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     },
     {
       "resource": "dashboards",
@@ -184,7 +184,7 @@
         "panel-tests",
         "graph-ng"
       ],
-      "folder": "general"
+      "folder": "root"
     }
   ],
   "maxScore": 1

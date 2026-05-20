@@ -82,15 +82,17 @@ func (v *objectForStorage) finish(ctx context.Context, err error, secrets secret
 
 // verifyFolder enforces the folder-annotation contract on write. When folder
 // support is enabled, a missing annotation is normalized to the canonical
-// "general" sentinel so every stored object carries an explicit parent — this
-// lets downstream readers (search index, authz, provisioning) match on a
-// single value instead of "" OR "general". When folder support is disabled,
-// any folder annotation is a client error: the resource does not live in the
-// folder tree at all.
+// folder.RootFolderName ("root") sentinel so every stored object carries an
+// explicit parent — this lets downstream readers (search index, authz,
+// provisioning) match on a single value instead of "" OR "general" OR
+// "root". "general" is reserved for the legacy /api/ surface and is never
+// written to the apistore here. When folder support is disabled, any folder
+// annotation is a client error: the resource does not live in the folder
+// tree at all.
 func (s *Storage) verifyFolder(obj utils.GrafanaMetaAccessor) error {
 	if s.opts.EnableFolderSupport {
 		if obj.GetFolder() == "" {
-			obj.SetFolder(folder.GeneralFolderUID)
+			obj.SetFolder(folder.RootFolderName)
 		}
 	} else if obj.GetFolder() != "" {
 		return apierrors.NewBadRequest("folders not supported in this resource")
