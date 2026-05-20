@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/klog/v2"
 
@@ -87,17 +88,28 @@ func (v *objectForStorage) finish(ctx context.Context, err error, secrets secret
 // provisioning) match on a single value instead of "" OR "general" OR
 // "root". "general" is reserved for the legacy /api/ surface and is never
 // written to the apistore here. When folder support is disabled, any folder
-// annotation is a client error: the resource does not live in the folder
-// tree at all.
+// annotation is a validation error (422): the resource does not live in the
+// folder tree at all.
 func (s *Storage) verifyFolder(obj utils.GrafanaMetaAccessor) error {
 	if s.opts.EnableFolderSupport {
 		if obj.GetFolder() == "" {
 			obj.SetFolder(folder.RootFolderName)
 		}
-	} else if obj.GetFolder() != "" {
-		return apierrors.NewBadRequest("folders not supported in this resource")
+		return nil
 	}
-	return nil
+	if obj.GetFolder() == "" {
+		return nil
+	}
+	return apierrors.NewInvalid(
+		obj.GetGroupVersionKind().GroupKind(),
+		obj.GetName(),
+		field.ErrorList{
+			field.Forbidden(
+				field.NewPath("metadata", "annotations").Key(utils.AnnoKeyFolder),
+				fmt.Sprintf("folders are not supported for %s", s.gr.String()),
+			),
+		},
+	)
 }
 
 // Called on create

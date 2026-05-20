@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math/rand/v2"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/bwmarrin/snowflake"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/apitesting"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,6 +26,7 @@ import (
 	"github.com/grafana/grafana/pkg/apimachinery/apis/common/v0alpha1"
 	"github.com/grafana/grafana/pkg/apimachinery/identity"
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
+	"github.com/grafana/grafana/pkg/services/folder"
 )
 
 var rtscheme = runtime.NewScheme()
@@ -651,5 +654,69 @@ func TestEnsureRepoManagedByParentFolder(t *testing.T) {
 		_, err = s.prepareObjectForUpdate(ctx, newDash, oldDash)
 		require.Error(t, err)
 		require.ErrorContains(t, err, "no config")
+	})
+}
+
+func TestVerifyFolder(t *testing.T) {
+	makeDashboard := func(t *testing.T, folderAnn string) utils.GrafanaMetaAccessor {
+		t.Helper()
+		obj := &dashv1.Dashboard{ObjectMeta: v1.ObjectMeta{Name: "test-dash", Namespace: "default"}}
+		acc, err := utils.MetaAccessor(obj)
+		require.NoError(t, err)
+		if folderAnn != "" {
+			acc.SetFolder(folderAnn)
+		}
+		return acc
+	}
+
+	t.Run("folder support enabled: empty annotation is normalized to RootFolderName", func(t *testing.T) {
+		s := &Storage{
+			gr:   dashv1.DashboardResourceInfo.GroupResource(),
+			opts: StorageOptions{EnableFolderSupport: true},
+		}
+		obj := makeDashboard(t, "")
+		require.NoError(t, s.verifyFolder(obj))
+		require.Equal(t, folder.RootFolderName, obj.GetFolder())
+	})
+
+	t.Run("folder support enabled: existing annotation passes through unchanged", func(t *testing.T) {
+		s := &Storage{
+			gr:   dashv1.DashboardResourceInfo.GroupResource(),
+			opts: StorageOptions{EnableFolderSupport: true},
+		}
+		obj := makeDashboard(t, "custom-folder")
+		require.NoError(t, s.verifyFolder(obj))
+		require.Equal(t, "custom-folder", obj.GetFolder())
+	})
+
+	t.Run("folder support disabled: empty annotation is accepted", func(t *testing.T) {
+		s := &Storage{
+			gr:   dashv1.DashboardResourceInfo.GroupResource(),
+			opts: StorageOptions{EnableFolderSupport: false},
+		}
+		obj := makeDashboard(t, "")
+		require.NoError(t, s.verifyFolder(obj))
+		require.Empty(t, obj.GetFolder())
+	})
+
+	t.Run("folder support disabled: non-empty annotation returns Invalid (422)", func(t *testing.T) {
+		s := &Storage{
+			gr:   dashv1.DashboardResourceInfo.GroupResource(),
+			opts: StorageOptions{EnableFolderSupport: false},
+		}
+		obj := makeDashboard(t, "some-folder")
+		err := s.verifyFolder(obj)
+		require.Error(t, err)
+		require.True(t, apierrors.IsInvalid(err), "expected an Invalid (422) status error, got %T: %v", err, err)
+
+		statusErr, ok := err.(*apierrors.StatusError)
+		require.True(t, ok, "error should be a *StatusError, got %T", err)
+		require.Equal(t, int32(http.StatusUnprocessableEntity), statusErr.ErrStatus.Code)
+		require.Equal(t, v1.StatusReasonInvalid, statusErr.ErrStatus.Reason)
+		require.NotNil(t, statusErr.ErrStatus.Details)
+		require.Len(t, statusErr.ErrStatus.Details.Causes, 1)
+		cause := statusErr.ErrStatus.Details.Causes[0]
+		require.Equal(t, v1.CauseTypeForbidden, cause.Type)
+		require.Equal(t, `metadata.annotations[grafana.app/folder]`, cause.Field)
 	})
 }
