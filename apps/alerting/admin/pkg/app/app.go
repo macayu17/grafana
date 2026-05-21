@@ -15,9 +15,9 @@ func New(cfg app.Config) (app.App, error) {
 		Name:       "alerting.admin",
 		KubeConfig: cfg.KubeConfig,
 		ManagedKinds: []simple.AppManagedKind{
-			{Kind: v0alpha1.ConfigKind()},
+			{Kind: v0alpha1.AlertingConfigKind()},
 			{Kind: v0alpha1.ExternalAlertmanagerSyncKind()},
-			{Kind: v0alpha1.SummaryKind()},
+			{Kind: v0alpha1.AlertingSummaryKind()},
 		},
 	}
 

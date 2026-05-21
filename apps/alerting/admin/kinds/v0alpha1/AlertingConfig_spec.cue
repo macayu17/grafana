@@ -1,11 +1,11 @@
 package v0alpha1
 
-// Config is the per-org alerting admin config — a singleton resource carrying
-// admin-controllable settings for the alerting stack. Structure groups fields
-// by area of concern (top level) → feature (second level) → knob (leaf). New
-// admin toggles land under the appropriate area sub-object; the structure lets
-// related knobs cluster naturally as the surface grows.
-ConfigSpec: {
+// AlertingConfig is the per-org alerting admin config — a singleton resource
+// carrying admin-controllable settings for the alerting stack. Structure
+// groups fields by area of concern (top level) → feature (second level) →
+// knob (leaf). New admin toggles land under the appropriate area sub-object;
+// the structure lets related knobs cluster naturally as the surface grows.
+AlertingConfigSpec: {
 	// alertmanager groups admin settings for the per-org alerting stack.
 	alertmanager?: {
 		// externalSync groups admin settings for the external Alertmanager

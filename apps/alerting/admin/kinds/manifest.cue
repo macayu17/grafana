@@ -14,25 +14,26 @@ manifest: {
 				go: {enabled: true}
 			}
 			kinds: [
-				configv0alpha1,
+				alertingConfigv0alpha1,
 				externalAlertmanagerSyncv0alpha1,
-				summaryv0alpha1,
+				alertingSummaryv0alpha1,
 			]
 		}
 	}
 	roles: {}
 }
 
-// Config kind: per-org alerting admin config (singleton). Inlined here rather
-// than in a separate file because a separate `Config.cue` collides with the
-// SDK config selector file `config.cue` on case-insensitive filesystems.
-configKind: {
-	kind:       "Config"
-	pluralName: "Configs"
+// AlertingConfig kind: per-org alerting admin config (singleton). Inlined
+// here rather than in a separate file because a separate `AlertingConfig.cue`
+// collides with the SDK config selector file `config.cue` on case-insensitive
+// filesystems.
+alertingConfigKind: {
+	kind:       "AlertingConfig"
+	pluralName: "AlertingConfigs"
 }
 
-configv0alpha1: configKind & {
+alertingConfigv0alpha1: alertingConfigKind & {
 	schema: {
-		spec: v0alpha1.ConfigSpec
+		spec: v0alpha1.AlertingConfigSpec
 	}
 }

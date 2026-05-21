@@ -52,7 +52,7 @@ var (
 func NewSummaryStorage(clientGenerator resource.ClientGenerator) *summaryStorage {
 	gr := schema.GroupResource{
 		Group:    v0alpha1.APIGroup,
-		Resource: strings.ToLower(v0alpha1.SummaryKind().Plural()),
+		Resource: strings.ToLower(v0alpha1.AlertingSummaryKind().Plural()),
 	}
 	return &summaryStorage{
 		clientGenerator: clientGenerator,
@@ -82,11 +82,11 @@ func (s *summaryStorage) resolveClient() (*v0alpha1.ExternalAlertmanagerSyncClie
 }
 
 func (s *summaryStorage) New() runtime.Object {
-	return v0alpha1.SummaryKind().ZeroValue()
+	return v0alpha1.AlertingSummaryKind().ZeroValue()
 }
 
 func (s *summaryStorage) NewList() runtime.Object {
-	return v0alpha1.SummaryKind().ZeroListValue()
+	return v0alpha1.AlertingSummaryKind().ZeroListValue()
 }
 
 func (s *summaryStorage) Destroy() {}
@@ -96,7 +96,7 @@ func (s *summaryStorage) NamespaceScoped() bool {
 }
 
 func (s *summaryStorage) GetSingularName() string {
-	return strings.ToLower(v0alpha1.SummaryKind().Kind())
+	return strings.ToLower(v0alpha1.AlertingSummaryKind().Kind())
 }
 
 func (s *summaryStorage) ConvertToTable(ctx context.Context, object runtime.Object, tableOptions runtime.Object) (*metav1.Table, error) {
@@ -128,12 +128,12 @@ func (s *summaryStorage) List(ctx context.Context, _ *internalversion.ListOption
 	if err != nil {
 		return nil, err
 	}
-	list := v0alpha1.SummaryKind().ZeroListValue().(*v0alpha1.SummaryList)
+	list := v0alpha1.AlertingSummaryKind().ZeroListValue().(*v0alpha1.AlertingSummaryList)
 	list.TypeMeta = metav1.TypeMeta{
 		APIVersion: v0alpha1.APIGroup + "/" + v0alpha1.APIVersion,
-		Kind:       v0alpha1.SummaryKind().Kind() + "List",
+		Kind:       v0alpha1.AlertingSummaryKind().Kind() + "List",
 	}
-	list.Items = []v0alpha1.Summary{*item}
+	list.Items = []v0alpha1.AlertingSummary{*item}
 	return list, nil
 }
 
@@ -144,8 +144,8 @@ func (s *summaryStorage) List(ctx context.Context, _ *internalversion.ListOption
 // Missing observation kinds (NotFound) leave the corresponding area
 // sub-key absent rather than emitting a zero-valued object; clients should
 // treat absence as not yet observed.
-func (s *summaryStorage) synthesize(ctx context.Context, namespace string) (*v0alpha1.Summary, error) {
-	out := &v0alpha1.Summary{
+func (s *summaryStorage) synthesize(ctx context.Context, namespace string) (*v0alpha1.AlertingSummary, error) {
+	out := &v0alpha1.AlertingSummary{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      summarySingletonName,
 			Namespace: namespace,
@@ -154,7 +154,7 @@ func (s *summaryStorage) synthesize(ctx context.Context, namespace string) (*v0a
 	out.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   v0alpha1.APIGroup,
 		Version: v0alpha1.APIVersion,
-		Kind:    v0alpha1.SummaryKind().Kind(),
+		Kind:    v0alpha1.AlertingSummaryKind().Kind(),
 	})
 
 	client, err := s.resolveClient()
@@ -169,7 +169,7 @@ func (s *summaryStorage) synthesize(ctx context.Context, namespace string) (*v0a
 	case err != nil:
 		return nil, err
 	default:
-		out.Status.Alertmanager = &v0alpha1.SummarySummaryAlertmanager{
+		out.Status.Alertmanager = &v0alpha1.AlertingSummaryAlertingSummaryAlertmanager{
 			ExternalSync: projectExternalSync(&eams.Status),
 		}
 	}
@@ -181,25 +181,25 @@ func (s *summaryStorage) synthesize(ctx context.Context, namespace string) (*v0a
 // Summary kind's equivalent sub-tree. The shapes mirror each other but
 // they're separate generated types because each kind owns its own gen
 // surface.
-func projectExternalSync(src *v0alpha1.ExternalAlertmanagerSyncStatus) *v0alpha1.SummaryExternalAlertmanagerSyncStatus {
+func projectExternalSync(src *v0alpha1.ExternalAlertmanagerSyncStatus) *v0alpha1.AlertingSummaryExternalAlertmanagerSyncStatus {
 	if src == nil {
 		return nil
 	}
-	out := &v0alpha1.SummaryExternalAlertmanagerSyncStatus{
+	out := &v0alpha1.AlertingSummaryExternalAlertmanagerSyncStatus{
 		ObservedGeneration: src.ObservedGeneration,
 		DatasourceUid:      src.DatasourceUid,
 		LastSuccessAt:      src.LastSuccessAt,
 	}
 	if src.Origin != nil {
-		o := v0alpha1.SummaryExternalAlertmanagerSyncStatusOrigin(*src.Origin)
+		o := v0alpha1.AlertingSummaryExternalAlertmanagerSyncStatusOrigin(*src.Origin)
 		out.Origin = &o
 	}
 	if len(src.Conditions) > 0 {
-		out.Conditions = make([]v0alpha1.SummaryCondition, len(src.Conditions))
+		out.Conditions = make([]v0alpha1.AlertingSummaryCondition, len(src.Conditions))
 		for i, c := range src.Conditions {
-			out.Conditions[i] = v0alpha1.SummaryCondition{
+			out.Conditions[i] = v0alpha1.AlertingSummaryCondition{
 				Type:               c.Type,
-				Status:             v0alpha1.SummaryConditionStatus(c.Status),
+				Status:             v0alpha1.AlertingSummaryConditionStatus(c.Status),
 				LastTransitionTime: c.LastTransitionTime,
 				Reason:             c.Reason,
 				Message:            c.Message,

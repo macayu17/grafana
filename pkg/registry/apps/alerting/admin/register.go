@@ -50,7 +50,7 @@ func (a *AppInstaller) GetAuthorizer() authorizer.Authorizer {
 // and apps/plugins/pkg/app/storage_wrapper.go for the prior-art pattern
 // this mirrors.
 func (a *AppInstaller) InstallAPIs(server appsdkapiserver.GenericAPIServer, restOptsGetter generic.RESTOptionsGetter) error {
-	summaryGVR := alertingadminv0alpha1.SummaryKind().GroupVersionResource()
+	summaryGVR := alertingadminv0alpha1.AlertingSummaryKind().GroupVersionResource()
 	wrapped := adminApp.NewCustomStorageWrapper(server, map[schema.GroupVersionResource]rest.Storage{
 		summaryGVR: adminApp.NewSummaryStorage(a.clientGenerator),
 	})

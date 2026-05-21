@@ -194,7 +194,7 @@ type ExternalAMSyncer struct {
 	namespaceMapper request.NamespaceMapper
 
 	cfgClientOnce       sync.Once
-	cfgClient           *alertingadminv0alpha1.ConfigClient
+	cfgClient           *alertingadminv0alpha1.AlertingConfigClient
 	extAMSyncClientOnce sync.Once
 	extAMSyncClient     *alertingadminv0alpha1.ExternalAlertmanagerSyncClient
 }
@@ -241,12 +241,12 @@ func NewExternalAMSyncer(
 // when no ClientGenerator was wired (test paths) or when construction has
 // previously failed. Caches the (success or failure) outcome via sync.Once so
 // the apiserver-not-ready failure mode doesn't get retried on every sync tick.
-func (s *ExternalAMSyncer) resolveCfgClient() *alertingadminv0alpha1.ConfigClient {
+func (s *ExternalAMSyncer) resolveCfgClient() *alertingadminv0alpha1.AlertingConfigClient {
 	if s.clientGenerator == nil {
 		return nil
 	}
 	s.cfgClientOnce.Do(func() {
-		c, err := alertingadminv0alpha1.NewConfigClientFromGenerator(s.clientGenerator)
+		c, err := alertingadminv0alpha1.NewAlertingConfigClientFromGenerator(s.clientGenerator)
 		if err != nil {
 			s.logger.Warn("Failed to construct admin Config client, falling back to legacy admin_config", "error", err)
 			return
@@ -568,7 +568,7 @@ func (s *ExternalAMSyncer) fetchExtraConfig(ctx context.Context, orgID int64, ui
 // externalSyncDatasourceUIDFromConfig walks the nested Config spec path
 // (alertmanager → externalSync → datasourceUid) and returns the configured
 // UID. Returns "" when any level in the chain is unset.
-func externalSyncDatasourceUIDFromConfig(c *alertingadminv0alpha1.Config) string {
+func externalSyncDatasourceUIDFromConfig(c *alertingadminv0alpha1.AlertingConfig) string {
 	if c == nil ||
 		c.Spec.Alertmanager == nil ||
 		c.Spec.Alertmanager.ExternalSync == nil ||

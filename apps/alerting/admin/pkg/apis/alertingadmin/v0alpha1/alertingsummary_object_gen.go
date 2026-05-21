@@ -15,29 +15,29 @@ import (
 )
 
 // +k8s:openapi-gen=true
-type Summary struct {
+type AlertingSummary struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
 
-	// Spec is the spec of the Summary
-	Spec SummarySpec `json:"spec" yaml:"spec"`
+	// Spec is the spec of the AlertingSummary
+	Spec AlertingSummarySpec `json:"spec" yaml:"spec"`
 
-	Status SummaryStatus `json:"status" yaml:"status"`
+	Status AlertingSummaryStatus `json:"status" yaml:"status"`
 }
 
-func NewSummary() *Summary {
-	return &Summary{
-		Spec:   *NewSummarySpec(),
-		Status: *NewSummaryStatus(),
+func NewAlertingSummary() *AlertingSummary {
+	return &AlertingSummary{
+		Spec:   *NewAlertingSummarySpec(),
+		Status: *NewAlertingSummaryStatus(),
 	}
 }
 
-func (o *Summary) GetSpec() any {
+func (o *AlertingSummary) GetSpec() any {
 	return o.Spec
 }
 
-func (o *Summary) SetSpec(spec any) error {
-	cast, ok := spec.(SummarySpec)
+func (o *AlertingSummary) SetSpec(spec any) error {
+	cast, ok := spec.(AlertingSummarySpec)
 	if !ok {
 		return fmt.Errorf("cannot set spec type %#v, not of type Spec", spec)
 	}
@@ -45,13 +45,13 @@ func (o *Summary) SetSpec(spec any) error {
 	return nil
 }
 
-func (o *Summary) GetSubresources() map[string]any {
+func (o *AlertingSummary) GetSubresources() map[string]any {
 	return map[string]any{
 		"status": o.Status,
 	}
 }
 
-func (o *Summary) GetSubresource(name string) (any, bool) {
+func (o *AlertingSummary) GetSubresource(name string) (any, bool) {
 	switch name {
 	case "status":
 		return o.Status, true
@@ -60,12 +60,12 @@ func (o *Summary) GetSubresource(name string) (any, bool) {
 	}
 }
 
-func (o *Summary) SetSubresource(name string, value any) error {
+func (o *AlertingSummary) SetSubresource(name string, value any) error {
 	switch name {
 	case "status":
-		cast, ok := value.(SummaryStatus)
+		cast, ok := value.(AlertingSummaryStatus)
 		if !ok {
-			return fmt.Errorf("cannot set status type %#v, not of type SummaryStatus", value)
+			return fmt.Errorf("cannot set status type %#v, not of type AlertingSummaryStatus", value)
 		}
 		o.Status = cast
 		return nil
@@ -74,7 +74,7 @@ func (o *Summary) SetSubresource(name string, value any) error {
 	}
 }
 
-func (o *Summary) GetStaticMetadata() resource.StaticMetadata {
+func (o *AlertingSummary) GetStaticMetadata() resource.StaticMetadata {
 	gvk := o.GroupVersionKind()
 	return resource.StaticMetadata{
 		Name:      o.ObjectMeta.Name,
@@ -85,7 +85,7 @@ func (o *Summary) GetStaticMetadata() resource.StaticMetadata {
 	}
 }
 
-func (o *Summary) SetStaticMetadata(metadata resource.StaticMetadata) {
+func (o *AlertingSummary) SetStaticMetadata(metadata resource.StaticMetadata) {
 	o.Name = metadata.Name
 	o.Namespace = metadata.Namespace
 	o.SetGroupVersionKind(schema.GroupVersionKind{
@@ -95,7 +95,7 @@ func (o *Summary) SetStaticMetadata(metadata resource.StaticMetadata) {
 	})
 }
 
-func (o *Summary) GetCommonMetadata() resource.CommonMetadata {
+func (o *AlertingSummary) GetCommonMetadata() resource.CommonMetadata {
 	dt := o.DeletionTimestamp
 	var deletionTimestamp *time.Time
 	if dt != nil {
@@ -127,7 +127,7 @@ func (o *Summary) GetCommonMetadata() resource.CommonMetadata {
 	}
 }
 
-func (o *Summary) SetCommonMetadata(metadata resource.CommonMetadata) {
+func (o *AlertingSummary) SetCommonMetadata(metadata resource.CommonMetadata) {
 	o.UID = types.UID(metadata.UID)
 	o.ResourceVersion = metadata.ResourceVersion
 	o.Generation = metadata.Generation
@@ -172,7 +172,7 @@ func (o *Summary) SetCommonMetadata(metadata resource.CommonMetadata) {
 	}
 }
 
-func (o *Summary) GetCreatedBy() string {
+func (o *AlertingSummary) GetCreatedBy() string {
 	if o.ObjectMeta.Annotations == nil {
 		o.ObjectMeta.Annotations = make(map[string]string)
 	}
@@ -180,7 +180,7 @@ func (o *Summary) GetCreatedBy() string {
 	return o.ObjectMeta.Annotations["grafana.com/createdBy"]
 }
 
-func (o *Summary) SetCreatedBy(createdBy string) {
+func (o *AlertingSummary) SetCreatedBy(createdBy string) {
 	if o.ObjectMeta.Annotations == nil {
 		o.ObjectMeta.Annotations = make(map[string]string)
 	}
@@ -188,7 +188,7 @@ func (o *Summary) SetCreatedBy(createdBy string) {
 	o.ObjectMeta.Annotations["grafana.com/createdBy"] = createdBy
 }
 
-func (o *Summary) GetUpdateTimestamp() time.Time {
+func (o *AlertingSummary) GetUpdateTimestamp() time.Time {
 	if o.ObjectMeta.Annotations == nil {
 		o.ObjectMeta.Annotations = make(map[string]string)
 	}
@@ -197,7 +197,7 @@ func (o *Summary) GetUpdateTimestamp() time.Time {
 	return parsed
 }
 
-func (o *Summary) SetUpdateTimestamp(updateTimestamp time.Time) {
+func (o *AlertingSummary) SetUpdateTimestamp(updateTimestamp time.Time) {
 	if o.ObjectMeta.Annotations == nil {
 		o.ObjectMeta.Annotations = make(map[string]string)
 	}
@@ -205,7 +205,7 @@ func (o *Summary) SetUpdateTimestamp(updateTimestamp time.Time) {
 	o.ObjectMeta.Annotations["grafana.com/updateTimestamp"] = updateTimestamp.Format(time.RFC3339)
 }
 
-func (o *Summary) GetUpdatedBy() string {
+func (o *AlertingSummary) GetUpdatedBy() string {
 	if o.ObjectMeta.Annotations == nil {
 		o.ObjectMeta.Annotations = make(map[string]string)
 	}
@@ -213,7 +213,7 @@ func (o *Summary) GetUpdatedBy() string {
 	return o.ObjectMeta.Annotations["grafana.com/updatedBy"]
 }
 
-func (o *Summary) SetUpdatedBy(updatedBy string) {
+func (o *AlertingSummary) SetUpdatedBy(updatedBy string) {
 	if o.ObjectMeta.Annotations == nil {
 		o.ObjectMeta.Annotations = make(map[string]string)
 	}
@@ -221,21 +221,21 @@ func (o *Summary) SetUpdatedBy(updatedBy string) {
 	o.ObjectMeta.Annotations["grafana.com/updatedBy"] = updatedBy
 }
 
-func (o *Summary) Copy() resource.Object {
+func (o *AlertingSummary) Copy() resource.Object {
 	return resource.CopyObject(o)
 }
 
-func (o *Summary) DeepCopyObject() runtime.Object {
+func (o *AlertingSummary) DeepCopyObject() runtime.Object {
 	return o.Copy()
 }
 
-func (o *Summary) DeepCopy() *Summary {
-	cpy := &Summary{}
+func (o *AlertingSummary) DeepCopy() *AlertingSummary {
+	cpy := &AlertingSummary{}
 	o.DeepCopyInto(cpy)
 	return cpy
 }
 
-func (o *Summary) DeepCopyInto(dst *Summary) {
+func (o *AlertingSummary) DeepCopyInto(dst *AlertingSummary) {
 	dst.TypeMeta.APIVersion = o.TypeMeta.APIVersion
 	dst.TypeMeta.Kind = o.TypeMeta.Kind
 	o.ObjectMeta.DeepCopyInto(&dst.ObjectMeta)
@@ -243,39 +243,39 @@ func (o *Summary) DeepCopyInto(dst *Summary) {
 	o.Status.DeepCopyInto(&dst.Status)
 }
 
-func (Summary) OpenAPIModelName() string {
-	return "com.github.grafana.grafana.apps.alerting.admin.pkg.apis.alertingadmin.v0alpha1.Summary"
+func (AlertingSummary) OpenAPIModelName() string {
+	return "com.github.grafana.grafana.apps.alerting.admin.pkg.apis.alertingadmin.v0alpha1.AlertingSummary"
 }
 
 // Interface compliance compile-time check
-var _ resource.Object = &Summary{}
+var _ resource.Object = &AlertingSummary{}
 
 // +k8s:openapi-gen=true
-type SummaryList struct {
+type AlertingSummaryList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
 	metav1.ListMeta `json:"metadata" yaml:"metadata"`
-	Items           []Summary `json:"items" yaml:"items"`
+	Items           []AlertingSummary `json:"items" yaml:"items"`
 }
 
-func (o *SummaryList) DeepCopyObject() runtime.Object {
+func (o *AlertingSummaryList) DeepCopyObject() runtime.Object {
 	return o.Copy()
 }
 
-func (o *SummaryList) Copy() resource.ListObject {
-	cpy := &SummaryList{
+func (o *AlertingSummaryList) Copy() resource.ListObject {
+	cpy := &AlertingSummaryList{
 		TypeMeta: o.TypeMeta,
-		Items:    make([]Summary, len(o.Items)),
+		Items:    make([]AlertingSummary, len(o.Items)),
 	}
 	o.ListMeta.DeepCopyInto(&cpy.ListMeta)
 	for i := 0; i < len(o.Items); i++ {
-		if item, ok := o.Items[i].Copy().(*Summary); ok {
+		if item, ok := o.Items[i].Copy().(*AlertingSummary); ok {
 			cpy.Items[i] = *item
 		}
 	}
 	return cpy
 }
 
-func (o *SummaryList) GetItems() []resource.Object {
+func (o *AlertingSummaryList) GetItems() []resource.Object {
 	items := make([]resource.Object, len(o.Items))
 	for i := 0; i < len(o.Items); i++ {
 		items[i] = &o.Items[i]
@@ -283,52 +283,52 @@ func (o *SummaryList) GetItems() []resource.Object {
 	return items
 }
 
-func (o *SummaryList) SetItems(items []resource.Object) {
-	o.Items = make([]Summary, len(items))
+func (o *AlertingSummaryList) SetItems(items []resource.Object) {
+	o.Items = make([]AlertingSummary, len(items))
 	for i := 0; i < len(items); i++ {
-		o.Items[i] = *items[i].(*Summary)
+		o.Items[i] = *items[i].(*AlertingSummary)
 	}
 }
 
-func (o *SummaryList) DeepCopy() *SummaryList {
-	cpy := &SummaryList{}
+func (o *AlertingSummaryList) DeepCopy() *AlertingSummaryList {
+	cpy := &AlertingSummaryList{}
 	o.DeepCopyInto(cpy)
 	return cpy
 }
 
-func (o *SummaryList) DeepCopyInto(dst *SummaryList) {
+func (o *AlertingSummaryList) DeepCopyInto(dst *AlertingSummaryList) {
 	resource.CopyObjectInto(dst, o)
 }
 
-func (SummaryList) OpenAPIModelName() string {
-	return "com.github.grafana.grafana.apps.alerting.admin.pkg.apis.alertingadmin.v0alpha1.SummaryList"
+func (AlertingSummaryList) OpenAPIModelName() string {
+	return "com.github.grafana.grafana.apps.alerting.admin.pkg.apis.alertingadmin.v0alpha1.AlertingSummaryList"
 }
 
 // Interface compliance compile-time check
-var _ resource.ListObject = &SummaryList{}
+var _ resource.ListObject = &AlertingSummaryList{}
 
 // Copy methods for all subresource types
 
 // DeepCopy creates a full deep copy of Spec
-func (s *SummarySpec) DeepCopy() *SummarySpec {
-	cpy := &SummarySpec{}
+func (s *AlertingSummarySpec) DeepCopy() *AlertingSummarySpec {
+	cpy := &AlertingSummarySpec{}
 	s.DeepCopyInto(cpy)
 	return cpy
 }
 
 // DeepCopyInto deep copies Spec into another Spec object
-func (s *SummarySpec) DeepCopyInto(dst *SummarySpec) {
+func (s *AlertingSummarySpec) DeepCopyInto(dst *AlertingSummarySpec) {
 	resource.CopyObjectInto(dst, s)
 }
 
-// DeepCopy creates a full deep copy of SummaryStatus
-func (s *SummaryStatus) DeepCopy() *SummaryStatus {
-	cpy := &SummaryStatus{}
+// DeepCopy creates a full deep copy of AlertingSummaryStatus
+func (s *AlertingSummaryStatus) DeepCopy() *AlertingSummaryStatus {
+	cpy := &AlertingSummaryStatus{}
 	s.DeepCopyInto(cpy)
 	return cpy
 }
 
-// DeepCopyInto deep copies SummaryStatus into another SummaryStatus object
-func (s *SummaryStatus) DeepCopyInto(dst *SummaryStatus) {
+// DeepCopyInto deep copies AlertingSummaryStatus into another AlertingSummaryStatus object
+func (s *AlertingSummaryStatus) DeepCopyInto(dst *AlertingSummaryStatus) {
 	resource.CopyObjectInto(dst, s)
 }

@@ -11,18 +11,18 @@ import (
 	"github.com/grafana/grafana-app-sdk/resource"
 )
 
-// SummaryJSONCodec is an implementation of resource.Codec for kubernetes JSON encoding
-type SummaryJSONCodec struct{}
+// AlertingSummaryJSONCodec is an implementation of resource.Codec for kubernetes JSON encoding
+type AlertingSummaryJSONCodec struct{}
 
 // Read reads JSON-encoded bytes from `reader` and unmarshals them into `into`
-func (*SummaryJSONCodec) Read(reader io.Reader, into resource.Object) error {
+func (*AlertingSummaryJSONCodec) Read(reader io.Reader, into resource.Object) error {
 	return json.NewDecoder(reader).Decode(into)
 }
 
 // Write writes JSON-encoded bytes into `writer` marshaled from `from`
-func (*SummaryJSONCodec) Write(writer io.Writer, from resource.Object) error {
+func (*AlertingSummaryJSONCodec) Write(writer io.Writer, from resource.Object) error {
 	return json.NewEncoder(writer).Encode(from)
 }
 
 // Interface compliance checks
-var _ resource.Codec = &SummaryJSONCodec{}
+var _ resource.Codec = &AlertingSummaryJSONCodec{}

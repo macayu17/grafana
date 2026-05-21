@@ -11,18 +11,18 @@ import (
 	"github.com/grafana/grafana-app-sdk/resource"
 )
 
-// ConfigJSONCodec is an implementation of resource.Codec for kubernetes JSON encoding
-type ConfigJSONCodec struct{}
+// AlertingConfigJSONCodec is an implementation of resource.Codec for kubernetes JSON encoding
+type AlertingConfigJSONCodec struct{}
 
 // Read reads JSON-encoded bytes from `reader` and unmarshals them into `into`
-func (*ConfigJSONCodec) Read(reader io.Reader, into resource.Object) error {
+func (*AlertingConfigJSONCodec) Read(reader io.Reader, into resource.Object) error {
 	return json.NewDecoder(reader).Decode(into)
 }
 
 // Write writes JSON-encoded bytes into `writer` marshaled from `from`
-func (*ConfigJSONCodec) Write(writer io.Writer, from resource.Object) error {
+func (*AlertingConfigJSONCodec) Write(writer io.Writer, from resource.Object) error {
 	return json.NewEncoder(writer).Encode(from)
 }
 
 // Interface compliance checks
-var _ resource.Codec = &ConfigJSONCodec{}
+var _ resource.Codec = &AlertingConfigJSONCodec{}

@@ -15,29 +15,29 @@ import (
 )
 
 // +k8s:openapi-gen=true
-type Config struct {
+type AlertingConfig struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
 
-	// Spec is the spec of the Config
-	Spec ConfigSpec `json:"spec" yaml:"spec"`
+	// Spec is the spec of the AlertingConfig
+	Spec AlertingConfigSpec `json:"spec" yaml:"spec"`
 
-	Status ConfigStatus `json:"status" yaml:"status"`
+	Status AlertingConfigStatus `json:"status" yaml:"status"`
 }
 
-func NewConfig() *Config {
-	return &Config{
-		Spec:   *NewConfigSpec(),
-		Status: *NewConfigStatus(),
+func NewAlertingConfig() *AlertingConfig {
+	return &AlertingConfig{
+		Spec:   *NewAlertingConfigSpec(),
+		Status: *NewAlertingConfigStatus(),
 	}
 }
 
-func (o *Config) GetSpec() any {
+func (o *AlertingConfig) GetSpec() any {
 	return o.Spec
 }
 
-func (o *Config) SetSpec(spec any) error {
-	cast, ok := spec.(ConfigSpec)
+func (o *AlertingConfig) SetSpec(spec any) error {
+	cast, ok := spec.(AlertingConfigSpec)
 	if !ok {
 		return fmt.Errorf("cannot set spec type %#v, not of type Spec", spec)
 	}
@@ -45,13 +45,13 @@ func (o *Config) SetSpec(spec any) error {
 	return nil
 }
 
-func (o *Config) GetSubresources() map[string]any {
+func (o *AlertingConfig) GetSubresources() map[string]any {
 	return map[string]any{
 		"status": o.Status,
 	}
 }
 
-func (o *Config) GetSubresource(name string) (any, bool) {
+func (o *AlertingConfig) GetSubresource(name string) (any, bool) {
 	switch name {
 	case "status":
 		return o.Status, true
@@ -60,12 +60,12 @@ func (o *Config) GetSubresource(name string) (any, bool) {
 	}
 }
 
-func (o *Config) SetSubresource(name string, value any) error {
+func (o *AlertingConfig) SetSubresource(name string, value any) error {
 	switch name {
 	case "status":
-		cast, ok := value.(ConfigStatus)
+		cast, ok := value.(AlertingConfigStatus)
 		if !ok {
-			return fmt.Errorf("cannot set status type %#v, not of type ConfigStatus", value)
+			return fmt.Errorf("cannot set status type %#v, not of type AlertingConfigStatus", value)
 		}
 		o.Status = cast
 		return nil
@@ -74,7 +74,7 @@ func (o *Config) SetSubresource(name string, value any) error {
 	}
 }
 
-func (o *Config) GetStaticMetadata() resource.StaticMetadata {
+func (o *AlertingConfig) GetStaticMetadata() resource.StaticMetadata {
 	gvk := o.GroupVersionKind()
 	return resource.StaticMetadata{
 		Name:      o.ObjectMeta.Name,
@@ -85,7 +85,7 @@ func (o *Config) GetStaticMetadata() resource.StaticMetadata {
 	}
 }
 
-func (o *Config) SetStaticMetadata(metadata resource.StaticMetadata) {
+func (o *AlertingConfig) SetStaticMetadata(metadata resource.StaticMetadata) {
 	o.Name = metadata.Name
 	o.Namespace = metadata.Namespace
 	o.SetGroupVersionKind(schema.GroupVersionKind{
@@ -95,7 +95,7 @@ func (o *Config) SetStaticMetadata(metadata resource.StaticMetadata) {
 	})
 }
 
-func (o *Config) GetCommonMetadata() resource.CommonMetadata {
+func (o *AlertingConfig) GetCommonMetadata() resource.CommonMetadata {
 	dt := o.DeletionTimestamp
 	var deletionTimestamp *time.Time
 	if dt != nil {
@@ -127,7 +127,7 @@ func (o *Config) GetCommonMetadata() resource.CommonMetadata {
 	}
 }
 
-func (o *Config) SetCommonMetadata(metadata resource.CommonMetadata) {
+func (o *AlertingConfig) SetCommonMetadata(metadata resource.CommonMetadata) {
 	o.UID = types.UID(metadata.UID)
 	o.ResourceVersion = metadata.ResourceVersion
 	o.Generation = metadata.Generation
@@ -172,7 +172,7 @@ func (o *Config) SetCommonMetadata(metadata resource.CommonMetadata) {
 	}
 }
 
-func (o *Config) GetCreatedBy() string {
+func (o *AlertingConfig) GetCreatedBy() string {
 	if o.ObjectMeta.Annotations == nil {
 		o.ObjectMeta.Annotations = make(map[string]string)
 	}
@@ -180,7 +180,7 @@ func (o *Config) GetCreatedBy() string {
 	return o.ObjectMeta.Annotations["grafana.com/createdBy"]
 }
 
-func (o *Config) SetCreatedBy(createdBy string) {
+func (o *AlertingConfig) SetCreatedBy(createdBy string) {
 	if o.ObjectMeta.Annotations == nil {
 		o.ObjectMeta.Annotations = make(map[string]string)
 	}
@@ -188,7 +188,7 @@ func (o *Config) SetCreatedBy(createdBy string) {
 	o.ObjectMeta.Annotations["grafana.com/createdBy"] = createdBy
 }
 
-func (o *Config) GetUpdateTimestamp() time.Time {
+func (o *AlertingConfig) GetUpdateTimestamp() time.Time {
 	if o.ObjectMeta.Annotations == nil {
 		o.ObjectMeta.Annotations = make(map[string]string)
 	}
@@ -197,7 +197,7 @@ func (o *Config) GetUpdateTimestamp() time.Time {
 	return parsed
 }
 
-func (o *Config) SetUpdateTimestamp(updateTimestamp time.Time) {
+func (o *AlertingConfig) SetUpdateTimestamp(updateTimestamp time.Time) {
 	if o.ObjectMeta.Annotations == nil {
 		o.ObjectMeta.Annotations = make(map[string]string)
 	}
@@ -205,7 +205,7 @@ func (o *Config) SetUpdateTimestamp(updateTimestamp time.Time) {
 	o.ObjectMeta.Annotations["grafana.com/updateTimestamp"] = updateTimestamp.Format(time.RFC3339)
 }
 
-func (o *Config) GetUpdatedBy() string {
+func (o *AlertingConfig) GetUpdatedBy() string {
 	if o.ObjectMeta.Annotations == nil {
 		o.ObjectMeta.Annotations = make(map[string]string)
 	}
@@ -213,7 +213,7 @@ func (o *Config) GetUpdatedBy() string {
 	return o.ObjectMeta.Annotations["grafana.com/updatedBy"]
 }
 
-func (o *Config) SetUpdatedBy(updatedBy string) {
+func (o *AlertingConfig) SetUpdatedBy(updatedBy string) {
 	if o.ObjectMeta.Annotations == nil {
 		o.ObjectMeta.Annotations = make(map[string]string)
 	}
@@ -221,21 +221,21 @@ func (o *Config) SetUpdatedBy(updatedBy string) {
 	o.ObjectMeta.Annotations["grafana.com/updatedBy"] = updatedBy
 }
 
-func (o *Config) Copy() resource.Object {
+func (o *AlertingConfig) Copy() resource.Object {
 	return resource.CopyObject(o)
 }
 
-func (o *Config) DeepCopyObject() runtime.Object {
+func (o *AlertingConfig) DeepCopyObject() runtime.Object {
 	return o.Copy()
 }
 
-func (o *Config) DeepCopy() *Config {
-	cpy := &Config{}
+func (o *AlertingConfig) DeepCopy() *AlertingConfig {
+	cpy := &AlertingConfig{}
 	o.DeepCopyInto(cpy)
 	return cpy
 }
 
-func (o *Config) DeepCopyInto(dst *Config) {
+func (o *AlertingConfig) DeepCopyInto(dst *AlertingConfig) {
 	dst.TypeMeta.APIVersion = o.TypeMeta.APIVersion
 	dst.TypeMeta.Kind = o.TypeMeta.Kind
 	o.ObjectMeta.DeepCopyInto(&dst.ObjectMeta)
@@ -243,39 +243,39 @@ func (o *Config) DeepCopyInto(dst *Config) {
 	o.Status.DeepCopyInto(&dst.Status)
 }
 
-func (Config) OpenAPIModelName() string {
-	return "com.github.grafana.grafana.apps.alerting.admin.pkg.apis.alertingadmin.v0alpha1.Config"
+func (AlertingConfig) OpenAPIModelName() string {
+	return "com.github.grafana.grafana.apps.alerting.admin.pkg.apis.alertingadmin.v0alpha1.AlertingConfig"
 }
 
 // Interface compliance compile-time check
-var _ resource.Object = &Config{}
+var _ resource.Object = &AlertingConfig{}
 
 // +k8s:openapi-gen=true
-type ConfigList struct {
+type AlertingConfigList struct {
 	metav1.TypeMeta `json:",inline" yaml:",inline"`
 	metav1.ListMeta `json:"metadata" yaml:"metadata"`
-	Items           []Config `json:"items" yaml:"items"`
+	Items           []AlertingConfig `json:"items" yaml:"items"`
 }
 
-func (o *ConfigList) DeepCopyObject() runtime.Object {
+func (o *AlertingConfigList) DeepCopyObject() runtime.Object {
 	return o.Copy()
 }
 
-func (o *ConfigList) Copy() resource.ListObject {
-	cpy := &ConfigList{
+func (o *AlertingConfigList) Copy() resource.ListObject {
+	cpy := &AlertingConfigList{
 		TypeMeta: o.TypeMeta,
-		Items:    make([]Config, len(o.Items)),
+		Items:    make([]AlertingConfig, len(o.Items)),
 	}
 	o.ListMeta.DeepCopyInto(&cpy.ListMeta)
 	for i := 0; i < len(o.Items); i++ {
-		if item, ok := o.Items[i].Copy().(*Config); ok {
+		if item, ok := o.Items[i].Copy().(*AlertingConfig); ok {
 			cpy.Items[i] = *item
 		}
 	}
 	return cpy
 }
 
-func (o *ConfigList) GetItems() []resource.Object {
+func (o *AlertingConfigList) GetItems() []resource.Object {
 	items := make([]resource.Object, len(o.Items))
 	for i := 0; i < len(o.Items); i++ {
 		items[i] = &o.Items[i]
@@ -283,52 +283,52 @@ func (o *ConfigList) GetItems() []resource.Object {
 	return items
 }
 
-func (o *ConfigList) SetItems(items []resource.Object) {
-	o.Items = make([]Config, len(items))
+func (o *AlertingConfigList) SetItems(items []resource.Object) {
+	o.Items = make([]AlertingConfig, len(items))
 	for i := 0; i < len(items); i++ {
-		o.Items[i] = *items[i].(*Config)
+		o.Items[i] = *items[i].(*AlertingConfig)
 	}
 }
 
-func (o *ConfigList) DeepCopy() *ConfigList {
-	cpy := &ConfigList{}
+func (o *AlertingConfigList) DeepCopy() *AlertingConfigList {
+	cpy := &AlertingConfigList{}
 	o.DeepCopyInto(cpy)
 	return cpy
 }
 
-func (o *ConfigList) DeepCopyInto(dst *ConfigList) {
+func (o *AlertingConfigList) DeepCopyInto(dst *AlertingConfigList) {
 	resource.CopyObjectInto(dst, o)
 }
 
-func (ConfigList) OpenAPIModelName() string {
-	return "com.github.grafana.grafana.apps.alerting.admin.pkg.apis.alertingadmin.v0alpha1.ConfigList"
+func (AlertingConfigList) OpenAPIModelName() string {
+	return "com.github.grafana.grafana.apps.alerting.admin.pkg.apis.alertingadmin.v0alpha1.AlertingConfigList"
 }
 
 // Interface compliance compile-time check
-var _ resource.ListObject = &ConfigList{}
+var _ resource.ListObject = &AlertingConfigList{}
 
 // Copy methods for all subresource types
 
 // DeepCopy creates a full deep copy of Spec
-func (s *ConfigSpec) DeepCopy() *ConfigSpec {
-	cpy := &ConfigSpec{}
+func (s *AlertingConfigSpec) DeepCopy() *AlertingConfigSpec {
+	cpy := &AlertingConfigSpec{}
 	s.DeepCopyInto(cpy)
 	return cpy
 }
 
 // DeepCopyInto deep copies Spec into another Spec object
-func (s *ConfigSpec) DeepCopyInto(dst *ConfigSpec) {
+func (s *AlertingConfigSpec) DeepCopyInto(dst *AlertingConfigSpec) {
 	resource.CopyObjectInto(dst, s)
 }
 
-// DeepCopy creates a full deep copy of ConfigStatus
-func (s *ConfigStatus) DeepCopy() *ConfigStatus {
-	cpy := &ConfigStatus{}
+// DeepCopy creates a full deep copy of AlertingConfigStatus
+func (s *AlertingConfigStatus) DeepCopy() *AlertingConfigStatus {
+	cpy := &AlertingConfigStatus{}
 	s.DeepCopyInto(cpy)
 	return cpy
 }
 
-// DeepCopyInto deep copies ConfigStatus into another ConfigStatus object
-func (s *ConfigStatus) DeepCopyInto(dst *ConfigStatus) {
+// DeepCopyInto deep copies AlertingConfigStatus into another AlertingConfigStatus object
+func (s *AlertingConfigStatus) DeepCopyInto(dst *AlertingConfigStatus) {
 	resource.CopyObjectInto(dst, s)
 }
