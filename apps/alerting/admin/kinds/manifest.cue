@@ -16,7 +16,7 @@ manifest: {
 			kinds: [
 				alertingConfigv0alpha1,
 				externalAlertmanagerSyncv0alpha1,
-				alertingSummaryv0alpha1,
+				alertingStatusv0alpha1,
 			]
 		}
 	}

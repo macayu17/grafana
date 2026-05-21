@@ -42,17 +42,17 @@ func (a *AppInstaller) GetAuthorizer() authorizer.Authorizer {
 	)
 }
 
-// InstallAPIs swaps the auto-generated storage for the synthetic Summary
-// kind with our composing summaryStorage. The Summary kind is read-only;
-// it has no apistore backing — Get/List call into the other status kinds'
-// singletons and assemble the response on the fly. See
-// apps/alerting/admin/pkg/app/summary_storage.go for the implementation,
+// InstallAPIs swaps the auto-generated storage for the synthetic
+// AlertingStatus kind with our composing statusStorage. The AlertingStatus
+// kind is read-only; it has no apistore backing — Get/List call into the
+// other status kinds' singletons and assemble the response on the fly. See
+// apps/alerting/admin/pkg/app/status_storage.go for the implementation,
 // and apps/plugins/pkg/app/storage_wrapper.go for the prior-art pattern
 // this mirrors.
 func (a *AppInstaller) InstallAPIs(server appsdkapiserver.GenericAPIServer, restOptsGetter generic.RESTOptionsGetter) error {
-	summaryGVR := alertingadminv0alpha1.AlertingSummaryKind().GroupVersionResource()
+	statusGVR := alertingadminv0alpha1.AlertingStatusKind().GroupVersionResource()
 	wrapped := adminApp.NewCustomStorageWrapper(server, map[schema.GroupVersionResource]rest.Storage{
-		summaryGVR: adminApp.NewSummaryStorage(a.clientGenerator),
+		statusGVR: adminApp.NewStatusStorage(a.clientGenerator),
 	})
 	return a.AppInstaller.InstallAPIs(wrapped, restOptsGetter)
 }

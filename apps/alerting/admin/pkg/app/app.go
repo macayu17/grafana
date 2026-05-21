@@ -17,7 +17,7 @@ func New(cfg app.Config) (app.App, error) {
 		ManagedKinds: []simple.AppManagedKind{
 			{Kind: v0alpha1.AlertingConfigKind()},
 			{Kind: v0alpha1.ExternalAlertmanagerSyncKind()},
-			{Kind: v0alpha1.AlertingSummaryKind()},
+			{Kind: v0alpha1.AlertingStatusKind()},
 		},
 	}
 
