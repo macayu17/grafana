@@ -15,7 +15,6 @@ manifest: {
 			}
 			kinds: [
 				alertingConfigv0alpha1,
-				externalAlertmanagerSyncv0alpha1,
 				alertingStatusv0alpha1,
 			]
 		}
@@ -34,6 +33,7 @@ alertingConfigKind: {
 
 alertingConfigv0alpha1: alertingConfigKind & {
 	schema: {
-		spec: v0alpha1.AlertingConfigSpec
+		spec:   v0alpha1.AlertingConfigSpec
+		status: v0alpha1.AlertingConfigStatus
 	}
 }

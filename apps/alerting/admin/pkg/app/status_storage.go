@@ -23,9 +23,19 @@ import (
 // singleton-per-org kinds in this group.
 const statusSingletonName = "default"
 
+// conditionTypeSynced mirrors the condition Type written by the sync worker
+// onto AlertingConfig.status.conditions[]. The synthetic AlertingStatus
+// projection routes this condition into status.alertmanager.externalSync.conditions
+// so the area sub-tree carries the relevant condition alongside its
+// auxiliary fields. Future concerns add their own condition types here.
+const conditionTypeSynced = "Synced"
+
 // statusStorage implements a synthetic rest.Storage for the AlertingStatus
-// kind. Reads compose .status from the other status kinds in this group;
-// writes are rejected. The kind is not backed by apistore.
+// kind. Reads compose .status by fetching the source-of-truth kinds in this
+// group (currently AlertingConfig — the sync worker writes its observation
+// onto AlertingConfig.status) and projecting them into the area-grouped
+// AlertingStatus shape. Writes are rejected; the kind is not backed by
+// apistore.
 //
 // The storage is registered via customStorageWrapper, which replaces the
 // auto-generated app-sdk storage for the AlertingStatus GroupVersionResource.
@@ -36,7 +46,7 @@ type statusStorage struct {
 	tableConverter rest.TableConvertor
 
 	clientOnce sync.Once
-	client     *v0alpha1.ExternalAlertmanagerSyncClient
+	client     *v0alpha1.AlertingConfigClient
 	clientErr  error
 }
 
@@ -61,19 +71,19 @@ func NewStatusStorage(clientGenerator resource.ClientGenerator) *statusStorage {
 	}
 }
 
-// resolveClient lazily constructs the ExternalAlertmanagerSyncClient on
-// first request. Eager construction at InstallAPIs time would race the
-// apiserver bring-up (same reason the ngalert syncer constructs lazily;
-// see external_am_syncer.go).
-func (s *statusStorage) resolveClient() (*v0alpha1.ExternalAlertmanagerSyncClient, error) {
+// resolveClient lazily constructs the AlertingConfigClient on first
+// request. Eager construction at InstallAPIs time would race the apiserver
+// bring-up (same reason the ngalert syncer constructs lazily; see
+// external_am_syncer.go).
+func (s *statusStorage) resolveClient() (*v0alpha1.AlertingConfigClient, error) {
 	s.clientOnce.Do(func() {
 		if s.clientGenerator == nil {
 			s.clientErr = fmt.Errorf("status storage missing ClientGenerator")
 			return
 		}
-		c, err := v0alpha1.NewExternalAlertmanagerSyncClientFromGenerator(s.clientGenerator)
+		c, err := v0alpha1.NewAlertingConfigClientFromGenerator(s.clientGenerator)
 		if err != nil {
-			s.clientErr = fmt.Errorf("build ExternalAlertmanagerSync client: %w", err)
+			s.clientErr = fmt.Errorf("build AlertingConfig client: %w", err)
 			return
 		}
 		s.client = c
@@ -137,13 +147,13 @@ func (s *statusStorage) List(ctx context.Context, _ *internalversion.ListOptions
 	return list, nil
 }
 
-// synthesize composes an AlertingStatus for the given namespace by fetching
-// the other status kinds' singletons and mapping their .status payloads
-// onto AlertingStatus.status under the area sub-tree defined in
+// synthesize composes an AlertingStatus for the given namespace by reading
+// AlertingConfig.status and projecting its area sub-trees plus relevant
+// conditions into the AlertingStatus shape defined in
 // alertingStatus_status.cue.
 //
-// Missing observation kinds (NotFound) leave the corresponding area sub-key
-// absent rather than emitting a zero-valued object; clients should treat
+// When no AlertingConfig exists yet (NotFound) the alertmanager area is
+// omitted rather than emitted as an empty object; clients should treat
 // absence as not yet observed.
 func (s *statusStorage) synthesize(ctx context.Context, namespace string) (*v0alpha1.AlertingStatus, error) {
 	out := &v0alpha1.AlertingStatus{
@@ -163,50 +173,79 @@ func (s *statusStorage) synthesize(ctx context.Context, namespace string) (*v0al
 		return nil, apierrors.NewInternalError(err)
 	}
 
-	eams, err := client.Get(ctx, resource.Identifier{Namespace: namespace, Name: statusSingletonName})
+	cfg, err := client.Get(ctx, resource.Identifier{Namespace: namespace, Name: statusSingletonName})
 	switch {
 	case apierrors.IsNotFound(err):
-		// no observation for this concern yet — leave alertmanager absent
+		// no config (and therefore no observation) for this org yet —
+		// leave alertmanager absent
 	case err != nil:
 		return nil, err
 	default:
-		out.Status.Alertmanager = &v0alpha1.AlertingStatusAlertingStatusAlertmanager{
-			ExternalSync: projectExternalSync(&eams.Status),
+		if am := projectAlertmanager(&cfg.Status); am != nil {
+			out.Status.Alertmanager = am
 		}
 	}
 
 	return out, nil
 }
 
-// projectExternalSync maps an ExternalAlertmanagerSync .status onto the
-// AlertingStatus kind's equivalent sub-tree. The shapes mirror each other
-// but they're separate generated types because each kind owns its own gen
-// surface.
-func projectExternalSync(src *v0alpha1.ExternalAlertmanagerSyncStatus) *v0alpha1.AlertingStatusExternalAlertmanagerSyncStatus {
+// projectAlertmanager maps AlertingConfig.status into the AlertingStatus
+// alertmanager sub-tree. Auxiliary fields (datasourceUid, origin) come from
+// status.alertmanager.externalSync; the Synced condition is routed from
+// status.conditions[] (which carries conditions for ALL concerns) into the
+// externalSync sub-tree. Returns nil when no observation has been recorded
+// for any alertmanager-area concern yet.
+func projectAlertmanager(src *v0alpha1.AlertingConfigStatus) *v0alpha1.AlertingStatusAlertingStatusAlertmanager {
 	if src == nil {
 		return nil
 	}
-	out := &v0alpha1.AlertingStatusExternalAlertmanagerSyncStatus{
-		ObservedGeneration: src.ObservedGeneration,
-		DatasourceUid:      src.DatasourceUid,
-		LastSuccessAt:      src.LastSuccessAt,
+	externalSync := projectExternalSync(src)
+	if externalSync == nil {
+		return nil
 	}
-	if src.Origin != nil {
-		o := v0alpha1.AlertingStatusExternalAlertmanagerSyncStatusOrigin(*src.Origin)
-		out.Origin = &o
+	return &v0alpha1.AlertingStatusAlertingStatusAlertmanager{
+		ExternalSync: externalSync,
 	}
-	if len(src.Conditions) > 0 {
-		out.Conditions = make([]v0alpha1.AlertingStatusCondition, len(src.Conditions))
-		for i, c := range src.Conditions {
-			out.Conditions[i] = v0alpha1.AlertingStatusCondition{
-				Type:               c.Type,
-				Status:             v0alpha1.AlertingStatusConditionStatus(c.Status),
-				LastTransitionTime: c.LastTransitionTime,
-				Reason:             c.Reason,
-				Message:            c.Message,
-				ObservedGeneration: c.ObservedGeneration,
-			}
+}
+
+// projectExternalSync builds the externalSync sub-tree on AlertingStatus by
+// copying the matching auxiliary fields from AlertingConfig.status.alertmanager.externalSync
+// and filtering AlertingConfig.status.conditions[] for the Synced condition.
+// Returns nil when there is nothing to report (no aux fields and no Synced
+// condition).
+func projectExternalSync(src *v0alpha1.AlertingConfigStatus) *v0alpha1.AlertingStatusAlertingStatusExternalSync {
+	var out *v0alpha1.AlertingStatusAlertingStatusExternalSync
+	ensure := func() *v0alpha1.AlertingStatusAlertingStatusExternalSync {
+		if out == nil {
+			out = &v0alpha1.AlertingStatusAlertingStatusExternalSync{}
+		}
+		return out
+	}
+
+	if src.Alertmanager != nil && src.Alertmanager.ExternalSync != nil {
+		es := src.Alertmanager.ExternalSync
+		if es.DatasourceUid != nil {
+			ensure().DatasourceUid = es.DatasourceUid
+		}
+		if es.Origin != nil {
+			o := v0alpha1.AlertingStatusAlertingStatusExternalSyncOrigin(*es.Origin)
+			ensure().Origin = &o
 		}
 	}
+
+	for _, c := range src.Conditions {
+		if c.Type != conditionTypeSynced {
+			continue
+		}
+		ensure().Conditions = append(out.Conditions, v0alpha1.AlertingStatusCondition{
+			Type:               c.Type,
+			Status:             v0alpha1.AlertingStatusConditionStatus(c.Status),
+			LastTransitionTime: c.LastTransitionTime,
+			Reason:             c.Reason,
+			Message:            c.Message,
+			ObservedGeneration: c.ObservedGeneration,
+		})
+	}
+
 	return out
 }
