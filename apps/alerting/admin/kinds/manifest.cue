@@ -15,7 +15,6 @@ manifest: {
 			}
 			kinds: [
 				alertingConfigv0alpha1,
-				alertingStatusv0alpha1,
 			]
 		}
 	}

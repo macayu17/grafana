@@ -25,7 +25,6 @@ func New(cfg app.Config) (app.App, error) {
 				Kind:      v0alpha1.AlertingConfigKind(),
 				Validator: alertingconfig.NewValidator(runtimeConfig),
 			},
-			{Kind: v0alpha1.AlertingStatusKind()},
 		},
 	}
 
