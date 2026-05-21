@@ -16,8 +16,8 @@ manifest: {
 			kinds: [
 				configv0alpha1,
 				externalAlertmanagerSyncv0alpha1,
+				summaryv0alpha1,
 			]
-			routes: v0alpha1.routes
 		}
 	}
 	roles: {}

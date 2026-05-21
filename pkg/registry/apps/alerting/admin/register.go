@@ -3,7 +3,10 @@ package admin
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
+	"k8s.io/apiserver/pkg/registry/generic"
+	"k8s.io/apiserver/pkg/registry/rest"
 	restclient "k8s.io/client-go/rest"
 
 	"github.com/grafana/grafana-app-sdk/app"
@@ -11,6 +14,7 @@ import (
 	"github.com/grafana/grafana-app-sdk/resource"
 	"github.com/grafana/grafana-app-sdk/simple"
 
+	alertingadminv0alpha1 "github.com/grafana/grafana/apps/alerting/admin/pkg/apis/alertingadmin/v0alpha1"
 	"github.com/grafana/grafana/apps/alerting/admin/pkg/apis/manifestdata"
 	adminApp "github.com/grafana/grafana/apps/alerting/admin/pkg/app"
 	adminAppConfig "github.com/grafana/grafana/apps/alerting/admin/pkg/app/config"
@@ -25,6 +29,7 @@ var (
 
 type AppInstaller struct {
 	appsdkapiserver.AppInstaller
+	clientGenerator resource.ClientGenerator
 }
 
 // GetAuthorizer permits all requests for now. An admin-only RBAC policy
@@ -35,6 +40,21 @@ func (a *AppInstaller) GetAuthorizer() authorizer.Authorizer {
 			return authorizer.DecisionAllow, "", nil
 		},
 	)
+}
+
+// InstallAPIs swaps the auto-generated storage for the synthetic Summary
+// kind with our composing summaryStorage. The Summary kind is read-only;
+// it has no apistore backing — Get/List call into the other status kinds'
+// singletons and assemble the response on the fly. See
+// apps/alerting/admin/pkg/app/summary_storage.go for the implementation,
+// and apps/plugins/pkg/app/storage_wrapper.go for the prior-art pattern
+// this mirrors.
+func (a *AppInstaller) InstallAPIs(server appsdkapiserver.GenericAPIServer, restOptsGetter generic.RESTOptionsGetter) error {
+	summaryGVR := alertingadminv0alpha1.SummaryKind().GroupVersionResource()
+	wrapped := adminApp.NewCustomStorageWrapper(server, map[schema.GroupVersionResource]rest.Storage{
+		summaryGVR: adminApp.NewSummaryStorage(a.clientGenerator),
+	})
+	return a.AppInstaller.InstallAPIs(wrapped, restOptsGetter)
 }
 
 func RegisterAppInstaller(
@@ -51,7 +71,7 @@ func RegisterAppInstaller(
 }
 
 func NewAppInstaller(clientGenerator resource.ClientGenerator) (*AppInstaller, error) {
-	installer := &AppInstaller{}
+	installer := &AppInstaller{clientGenerator: clientGenerator}
 
 	localManifest := manifestdata.LocalManifest()
 	runtimeConfig := adminAppConfig.RuntimeConfig{ClientGenerator: clientGenerator}
