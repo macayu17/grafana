@@ -180,9 +180,10 @@ type ExternalAMSyncer struct {
 	lastSyncHashMu sync.RWMutex
 	lastSyncHash   map[int64]uint64
 
-	// k8s API integration. The syncer reads spec.externalAlertmanagerUid from
-	// the admin Config resource and persists .status to the
-	// ExternalAlertmanagerSync resource. Both clients are constructed lazily
+	// k8s API integration. The syncer reads
+	// spec.alertmanager.externalSync.datasourceUid from the admin Config
+	// resource and persists .status to the ExternalAlertmanagerSync resource.
+	// Both clients are constructed lazily
 	// on first use, NOT in NewExternalAMSyncer — eager construction would
 	// deadlock during DI because the syncer is built on the main init
 	// goroutine, and the REST config provider (eventualRestConfigProvider)
@@ -564,6 +565,19 @@ func (s *ExternalAMSyncer) fetchExtraConfig(ctx context.Context, orgID int64, ui
 	}, hash, nil
 }
 
+// externalSyncDatasourceUIDFromConfig walks the nested Config spec path
+// (alertmanager → externalSync → datasourceUid) and returns the configured
+// UID. Returns "" when any level in the chain is unset.
+func externalSyncDatasourceUIDFromConfig(c *alertingadminv0alpha1.Config) string {
+	if c == nil ||
+		c.Spec.Alertmanager == nil ||
+		c.Spec.Alertmanager.ExternalSync == nil ||
+		c.Spec.Alertmanager.ExternalSync.DatasourceUid == nil {
+		return ""
+	}
+	return *c.Spec.Alertmanager.ExternalSync.DatasourceUid
+}
+
 // resolveExternalAMUIDForOrg returns the datasource UID to use for external AM
 // sync for the given org and where it came from. The operator-level
 // ExternalAlertmanagerUID ini setting takes precedence over per-org config.
@@ -585,10 +599,7 @@ func (s *ExternalAMSyncer) resolveExternalAMUIDForOrg(ctx context.Context, orgID
 			}
 			return "", "", err
 		}
-		if ac.Spec.ExternalAlertmanagerUid == nil {
-			return "", alertingadminv0alpha1.ExternalAlertmanagerSyncStatusOriginApi, nil
-		}
-		return *ac.Spec.ExternalAlertmanagerUid, alertingadminv0alpha1.ExternalAlertmanagerSyncStatusOriginApi, nil
+		return externalSyncDatasourceUIDFromConfig(ac), alertingadminv0alpha1.ExternalAlertmanagerSyncStatusOriginApi, nil
 	}
 
 	cfg, err := s.adminConfigStore.GetAdminConfiguration(orgID)
@@ -606,8 +617,9 @@ func (s *ExternalAMSyncer) resolveExternalAMUIDForOrg(ctx context.Context, orgID
 
 // IsConfiguredForOrg reports whether external Alertmanager sync is configured
 // for the given org. True when the operator-level ini setting is non-empty
-// (applies to all orgs) OR a non-empty externalAlertmanagerUid is set on the
-// AdminConfig resource (or legacy admin_config table when the API flag is off).
+// (applies to all orgs) OR a non-empty datasource UID is set on the AdminConfig
+// resource at .spec.alertmanager.externalSync.datasourceUid (or legacy
+// admin_config table when the API flag is off).
 func (s *ExternalAMSyncer) IsConfiguredForOrg(ctx context.Context, orgID int64) (bool, error) {
 	if s.settings.UnifiedAlerting.ExternalAlertmanagerUID != "" {
 		return true, nil
@@ -622,7 +634,7 @@ func (s *ExternalAMSyncer) IsConfiguredForOrg(ctx context.Context, orgID int64) 
 			}
 			return false, err
 		}
-		return ac.Spec.ExternalAlertmanagerUid != nil && *ac.Spec.ExternalAlertmanagerUid != "", nil
+		return externalSyncDatasourceUIDFromConfig(ac) != "", nil
 	}
 
 	cfg, err := s.adminConfigStore.GetAdminConfiguration(orgID)

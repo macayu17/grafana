@@ -3,7 +3,7 @@ package v0alpha1
 // Status resources under the admin.alerting.grafana.app group carry runtime
 // observations only. ExternalAlertmanagerSync's spec is intentionally a no-op:
 // admin-controllable configuration for external Alertmanager sync lives on
-// Config.spec.externalAlertmanagerUid in the same group.
+// Config.spec.alertmanager.externalSync.datasourceUid in the same group.
 //
 // The k8s machinery and app-sdk codegen require every kind to declare a spec
 // type with at least one field. We carry a single reserved placeholder field
@@ -35,14 +35,14 @@ ExternalAlertmanagerSyncStatus: {
 	observedGeneration?: int
 
 	// UID actually used on the last sync attempt. May differ from
-	// `Config.spec.externalAlertmanagerUid` immediately after a spec change,
-	// until the next tick. When `origin = "ini"`, this is the grafana.ini
-	// override value.
+	// `Config.spec.alertmanager.externalSync.datasourceUid` immediately after
+	// a spec change, until the next tick. When `origin = "ini"`, this is the
+	// grafana.ini override value.
 	datasourceUid?: string
 
 	// Which source supplied datasourceUid on the last run:
-	//   - "api": value from Config.spec.externalAlertmanagerUid (set by an
-	//     admin via the k8s API).
+	//   - "api": value from Config.spec.alertmanager.externalSync.datasourceUid
+	//     (set by an admin via the k8s API).
 	//   - "ini": grafana.ini override (`[unified_alerting]
 	//     external_alertmanager_uid`), set by the server operator. Wins over
 	//     api when both are present.

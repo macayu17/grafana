@@ -64,13 +64,13 @@ type ExternalAlertmanagerSyncStatus struct {
 	// with the conditions pattern.
 	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
 	// UID actually used on the last sync attempt. May differ from
-	// `Config.spec.externalAlertmanagerUid` immediately after a spec change,
-	// until the next tick. When `origin = "ini"`, this is the grafana.ini
-	// override value.
+	// `Config.spec.alertmanager.externalSync.datasourceUid` immediately after
+	// a spec change, until the next tick. When `origin = "ini"`, this is the
+	// grafana.ini override value.
 	DatasourceUid *string `json:"datasourceUid,omitempty"`
 	// Which source supplied datasourceUid on the last run:
-	//   - "api": value from Config.spec.externalAlertmanagerUid (set by an
-	//     admin via the k8s API).
+	//   - "api": value from Config.spec.alertmanager.externalSync.datasourceUid
+	//     (set by an admin via the k8s API).
 	//   - "ini": grafana.ini override (`[unified_alerting]
 	//     external_alertmanager_uid`), set by the server operator. Wins over
 	//     api when both are present.
