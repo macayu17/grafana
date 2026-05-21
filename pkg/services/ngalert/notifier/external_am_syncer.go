@@ -38,7 +38,7 @@ import (
 // are singleton-per-org. Per-org namespacing means each org has exactly one
 // resource of each kind at this fixed name.
 const (
-	configSingletonName    = "default"
+	configSingletonName         = "default"
 	externalAMSyncSingletonName = "default"
 )
 
@@ -180,31 +180,37 @@ type ExternalAMSyncer struct {
 	lastSyncHashMu sync.RWMutex
 	lastSyncHash   map[int64]uint64
 
-	// k8s API integration. When the experimental flag is on, the syncer
-	// reads `spec.externalAlertmanagerUid` from the AdminConfig resource
-	// (adminconfig.alerting.grafana.app) instead of the legacy admin_config
-	// table, and persists status to the ExternalAlertmanagerSync resource
-	// (status.alerting.grafana.app). Either client is nil when the flag is
-	// off OR when its construction failed at startup; nil cfgClient
-	// falls back to the legacy admin_config path for UID resolution, and
-	// nil extAMSyncClient skips status writes.
-	cfgClient  *alertingadminv0alpha1.ConfigClient
-	extAMSyncClient *alertingadminv0alpha1.ExternalAlertmanagerSyncClient
+	// k8s API integration. The syncer reads spec.externalAlertmanagerUid from
+	// the admin Config resource and persists .status to the
+	// ExternalAlertmanagerSync resource. Both clients are constructed lazily
+	// on first use, NOT in NewExternalAMSyncer — eager construction would
+	// deadlock during DI because the syncer is built on the main init
+	// goroutine, and the REST config provider (eventualRestConfigProvider)
+	// blocks until the apiserver is up. The apiserver can't come up while we
+	// hold the init goroutine, so we'd deadlock. See the cfgClientOnce /
+	// extAMSyncClientOnce helpers below.
+	clientGenerator resource.ClientGenerator
 	namespaceMapper request.NamespaceMapper
+
+	cfgClientOnce       sync.Once
+	cfgClient           *alertingadminv0alpha1.ConfigClient
+	extAMSyncClientOnce sync.Once
+	extAMSyncClient     *alertingadminv0alpha1.ExternalAlertmanagerSyncClient
 }
 
 // NewExternalAMSyncer constructs an ExternalAMSyncer. requestValidator may not be
 // nil; pass &validations.OSSDataSourceRequestValidator{} for the no-op default.
 //
-// When clientGenerator is non-nil, the syncer builds typed clients to the
-// admin app's Config and ExternalAlertmanagerSync resources and uses them for
-// UID resolution (read Config.spec) and status writes (to
-// ExternalAlertmanagerSync.status). Client construction failures are logged
-// and treated as "client unavailable": the syncer falls back to the legacy
-// admin_config store for UID resolution and skips status writes.
+// When clientGenerator is non-nil, the syncer lazily builds typed clients to
+// the admin app's Config and ExternalAlertmanagerSync resources on first use
+// (see the resolveCfgClient / resolveExtAMSyncClient helpers). UID resolution
+// reads Config.spec; status writes go to ExternalAlertmanagerSync.status.
+// Construction is deferred because eager wiring during DI deadlocks against
+// the apiserver bring-up — see the field comment above.
 //
 // clientGenerator and namespaceMapper are nil in test paths that don't
-// exercise the k8s clients.
+// exercise the k8s clients; the syncer falls back to the legacy admin_config
+// store for UID resolution and skips status writes.
 func NewExternalAMSyncer(
 	adminConfigStore store.AdminConfigurationStore,
 	datasourceService datasources.DataSourceService,
@@ -216,7 +222,7 @@ func NewExternalAMSyncer(
 	clientGenerator resource.ClientGenerator,
 	namespaceMapper request.NamespaceMapper,
 ) *ExternalAMSyncer {
-	s := &ExternalAMSyncer{
+	return &ExternalAMSyncer{
 		adminConfigStore:   adminConfigStore,
 		datasourceService:  datasourceService,
 		httpClientProvider: httpClientProvider,
@@ -225,21 +231,46 @@ func NewExternalAMSyncer(
 		metrics:            m,
 		logger:             logger,
 		lastSyncHash:       make(map[int64]uint64),
+		clientGenerator:    clientGenerator,
 		namespaceMapper:    namespaceMapper,
 	}
-	if clientGenerator != nil {
-		if c, err := alertingadminv0alpha1.NewConfigClientFromGenerator(clientGenerator); err != nil {
-			logger.Warn("Failed to construct admin Config client, falling back to legacy admin_config", "error", err)
-		} else {
-			s.cfgClient = c
-		}
-		if c, err := alertingadminv0alpha1.NewExternalAlertmanagerSyncClientFromGenerator(clientGenerator); err != nil {
-			logger.Warn("Failed to construct ExternalAlertmanagerSync client, status writes will be skipped", "error", err)
-		} else {
-			s.extAMSyncClient = c
-		}
+}
+
+// resolveCfgClient lazily builds the admin Config k8s client. Returns nil
+// when no ClientGenerator was wired (test paths) or when construction has
+// previously failed. Caches the (success or failure) outcome via sync.Once so
+// the apiserver-not-ready failure mode doesn't get retried on every sync tick.
+func (s *ExternalAMSyncer) resolveCfgClient() *alertingadminv0alpha1.ConfigClient {
+	if s.clientGenerator == nil {
+		return nil
 	}
-	return s
+	s.cfgClientOnce.Do(func() {
+		c, err := alertingadminv0alpha1.NewConfigClientFromGenerator(s.clientGenerator)
+		if err != nil {
+			s.logger.Warn("Failed to construct admin Config client, falling back to legacy admin_config", "error", err)
+			return
+		}
+		s.cfgClient = c
+	})
+	return s.cfgClient
+}
+
+// resolveExtAMSyncClient lazily builds the ExternalAlertmanagerSync k8s
+// client. Same lifecycle as resolveCfgClient — nil means "no client, skip
+// status writes".
+func (s *ExternalAMSyncer) resolveExtAMSyncClient() *alertingadminv0alpha1.ExternalAlertmanagerSyncClient {
+	if s.clientGenerator == nil {
+		return nil
+	}
+	s.extAMSyncClientOnce.Do(func() {
+		c, err := alertingadminv0alpha1.NewExternalAlertmanagerSyncClientFromGenerator(s.clientGenerator)
+		if err != nil {
+			s.logger.Warn("Failed to construct ExternalAlertmanagerSync client, status writes will be skipped", "error", err)
+			return
+		}
+		s.extAMSyncClient = c
+	})
+	return s.extAMSyncClient
 }
 
 // orgServiceContext returns ctx wrapped with a service identity scoped to the
@@ -349,7 +380,7 @@ func (s *ExternalAMSyncer) MarkFailed(ctx context.Context, orgID int64, syncErr 
 // syncErr == nil signals success; otherwise the failure category is extracted
 // via reasonOf inside computeSyncStatus.
 func (s *ExternalAMSyncer) writeSyncStatusFor(ctx context.Context, orgID int64, syncErr error) {
-	if s.extAMSyncClient == nil {
+	if s.resolveExtAMSyncClient() == nil {
 		return
 	}
 	uid, origin, err := s.resolveExternalAMUIDForOrg(ctx, orgID)
@@ -376,7 +407,7 @@ func (s *ExternalAMSyncer) writeSyncStatusFor(ctx context.Context, orgID int64, 
 // client-go RetryOnConflict helper. Concurrent edits are preserved because
 // each retry re-reads the resource before applying the status mutation.
 func (s *ExternalAMSyncer) recordSyncResult(ctx context.Context, orgID int64, uid string, origin alertingadminv0alpha1.ExternalAlertmanagerSyncStatusOrigin, syncErr error) {
-	c := s.extAMSyncClient
+	c := s.resolveExtAMSyncClient()
 	if c == nil {
 		return
 	}
@@ -545,7 +576,7 @@ func (s *ExternalAMSyncer) resolveExternalAMUIDForOrg(ctx context.Context, orgID
 		return uid, alertingadminv0alpha1.ExternalAlertmanagerSyncStatusOriginIni, nil
 	}
 
-	if c := s.cfgClient; c != nil {
+	if c := s.resolveCfgClient(); c != nil {
 		nsCtx, ns := s.orgServiceContext(ctx, orgID)
 		ac, err := c.Get(nsCtx, resource.Identifier{Namespace: ns, Name: configSingletonName})
 		if err != nil {
@@ -582,7 +613,7 @@ func (s *ExternalAMSyncer) IsConfiguredForOrg(ctx context.Context, orgID int64) 
 		return true, nil
 	}
 
-	if c := s.cfgClient; c != nil {
+	if c := s.resolveCfgClient(); c != nil {
 		nsCtx, ns := s.orgServiceContext(ctx, orgID)
 		ac, err := c.Get(nsCtx, resource.Identifier{Namespace: ns, Name: configSingletonName})
 		if err != nil {
