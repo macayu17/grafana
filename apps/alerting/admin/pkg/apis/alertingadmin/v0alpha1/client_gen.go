@@ -29,23 +29,23 @@ func NewCustomRouteClientFromGenerator(generator resource.ClientGenerator, defau
 	return NewCustomRouteClient(client), nil
 }
 
-type GetStatusRequest struct {
+type GetSummaryRequest struct {
 	Headers http.Header
 }
 
-func (c *CustomRouteClient) GetStatus(ctx context.Context, namespace string, request GetStatusRequest) (*GetStatusResponse, error) {
+func (c *CustomRouteClient) GetSummary(ctx context.Context, namespace string, request GetSummaryRequest) (*GetSummaryResponse, error) {
 	resp, err := c.NamespacedRequest(ctx, namespace, resource.CustomRouteRequestOptions{
-		Path:    "/status",
+		Path:    "/summary",
 		Verb:    "GET",
 		Headers: request.Headers,
 	})
 	if err != nil {
 		return nil, err
 	}
-	cast := GetStatusResponse{}
+	cast := GetSummaryResponse{}
 	err = json.Unmarshal(resp, &cast)
 	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal response bytes into GetStatusResponse: %w", err)
+		return nil, fmt.Errorf("unable to unmarshal response bytes into GetSummaryResponse: %w", err)
 	}
 	return &cast, nil
 }

@@ -28,9 +28,9 @@ func New(cfg app.Config) (app.App, error) {
 			"v0alpha1": {
 				{
 					Namespaced: true,
-					Path:       "/status",
+					Path:       "/summary",
 					Method:     "GET",
-				}: newAggregateStatusHandler(runtimeConfig.ClientGenerator),
+				}: newAggregateSummaryHandler(runtimeConfig.ClientGenerator),
 			},
 		},
 		ManagedKinds: []simple.AppManagedKind{
@@ -51,28 +51,36 @@ func New(cfg app.Config) (app.App, error) {
 	return a, nil
 }
 
-// newAggregateStatusHandler returns a handler for the /status route that fans
-// out across status kinds in this group and returns each kind's singleton
-// (when present) as a composite. When a kind has no singleton for the
-// namespace, that key is omitted from the response rather than emitted as
-// null — clients should treat absence as "not yet observed".
+// newAggregateSummaryHandler returns a handler for the /summary route that
+// fans out across status kinds in this group and returns each kind's
+// singleton (when present) as a composite grouped by area of concern,
+// mirroring the structure of Config.spec. Sub-keys absent from the response
+// mean "no singleton observed for this concern yet" — clients should treat
+// absence as "not yet observed" rather than as an empty status.
 //
-// To add a new status kind: build its client here, add a Get+populate block,
-// extend the response key set.
-func newAggregateStatusHandler(clientGenerator resource.ClientGenerator) simple.AppCustomRouteHandler {
+// To add a new status kind: build its client here, GET its singleton, and
+// place the resulting .Status payload at the response path that matches
+// where the kind's settings live on Config.spec
+// (e.g. alertmanager → externalSync → ExternalAlertmanagerSync.status).
+func newAggregateSummaryHandler(clientGenerator resource.ClientGenerator) simple.AppCustomRouteHandler {
 	return func(ctx context.Context, writer app.CustomRouteResponseWriter, request *app.CustomRouteRequest) error {
-		body := map[string]interface{}{}
+		alertmanager := map[string]interface{}{}
 
 		if clientGenerator != nil {
 			eams, err := v0alpha1.NewExternalAlertmanagerSyncClientFromGenerator(clientGenerator)
 			if err == nil {
 				obj, getErr := eams.Get(ctx, resource.Identifier{Namespace: request.ResourceIdentifier.Namespace, Name: statusSingletonName})
 				if getErr == nil {
-					body["externalAlertmanagerSync"] = obj.Status
+					alertmanager["externalSync"] = obj.Status
 				} else if !k8serrors.IsNotFound(getErr) {
 					return getErr
 				}
 			}
+		}
+
+		body := map[string]interface{}{}
+		if len(alertmanager) > 0 {
+			body["alertmanager"] = alertmanager
 		}
 
 		writer.Header().Set("Content-Type", "application/json")
