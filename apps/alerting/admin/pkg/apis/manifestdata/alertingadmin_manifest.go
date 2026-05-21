@@ -43,7 +43,15 @@ var appManifestData = app.ManifestData{
 					Plural:     "AlertingConfigs",
 					Scope:      "Namespaced",
 					Conversion: false,
-					Schema:     &versionSchemaAlertingConfigv0alpha1,
+					Admission: &app.AdmissionCapabilities{
+						Validation: &app.ValidationCapability{
+							Operations: []app.AdmissionOperation{
+								app.AdmissionOperationCreate,
+								app.AdmissionOperationUpdate,
+							},
+						},
+					},
+					Schema: &versionSchemaAlertingConfigv0alpha1,
 				},
 
 				{

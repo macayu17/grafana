@@ -36,4 +36,13 @@ alertingConfigv0alpha1: alertingConfigKind & {
 		spec:   v0alpha1.AlertingConfigSpec
 		status: v0alpha1.AlertingConfigStatus
 	}
+	// Required so the SDK accepts the admission Validator attached on the
+	// kind via simple.AppManagedKind in pkg/app/app.go. The validator
+	// itself is defined in pkg/app/alertingconfig/validator.go.
+	validation: {
+		operations: [
+			"CREATE",
+			"UPDATE",
+		]
+	}
 }

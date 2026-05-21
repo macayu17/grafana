@@ -1,21 +1,30 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/grafana/grafana-app-sdk/app"
 	"github.com/grafana/grafana-app-sdk/simple"
 
 	"github.com/grafana/grafana/apps/alerting/admin/pkg/apis/alertingadmin/v0alpha1"
+	"github.com/grafana/grafana/apps/alerting/admin/pkg/app/alertingconfig"
 	"github.com/grafana/grafana/apps/alerting/admin/pkg/app/config"
 )
 
 func New(cfg app.Config) (app.App, error) {
-	_, _ = cfg.SpecificConfig.(config.RuntimeConfig)
+	runtimeConfig, ok := cfg.SpecificConfig.(config.RuntimeConfig)
+	if !ok {
+		return nil, fmt.Errorf("invalid SpecificConfig type: expected config.RuntimeConfig, got %T", cfg.SpecificConfig)
+	}
 
 	simpleConfig := simple.AppConfig{
 		Name:       "alerting.admin",
 		KubeConfig: cfg.KubeConfig,
 		ManagedKinds: []simple.AppManagedKind{
-			{Kind: v0alpha1.AlertingConfigKind()},
+			{
+				Kind:      v0alpha1.AlertingConfigKind(),
+				Validator: alertingconfig.NewValidator(runtimeConfig),
+			},
 			{Kind: v0alpha1.AlertingStatusKind()},
 		},
 	}

@@ -1,11 +1,33 @@
 package config
 
-import "github.com/grafana/grafana-app-sdk/resource"
+import (
+	"context"
+
+	"github.com/grafana/grafana-app-sdk/resource"
+)
 
 // RuntimeConfig carries the in-process dependencies the admin app needs at
-// runtime to satisfy its custom routes. The /status aggregate route fans out
-// across status kinds via the apiserver client, so it needs a ClientGenerator
-// supplied by the host process at registration time.
+// runtime. Wired by the parent process (pkg/registry/apps/alerting/admin)
+// at registration time so the admin app's submodule stays free of
+// grafana-parent imports.
 type RuntimeConfig struct {
+	// ClientGenerator builds typed clients into the in-process apiserver.
+	// Used by the synthetic AlertingStatus storage to read AlertingConfig.
 	ClientGenerator resource.ClientGenerator
+
+	// ValidateExternalSyncDatasource validates that the given datasource UID
+	// is acceptable as spec.externalAlertmanagerSync.datasourceUid for the
+	// org carried in ctx. Called from the AlertingConfig admission validator
+	// on every create/update.
+	//
+	// Implementations should check:
+	//   - the sync feature flag is enabled (otherwise reject writes that
+	//     introduce a UID — the value would have no effect),
+	//   - the datasource exists in the request's org,
+	//   - the datasource type is alertmanager,
+	//   - its JsonData.implementation is in the syncable allow-list.
+	//
+	// Return nil on success; return an error to reject the admission
+	// request. Nil function means validation is skipped (e.g. test paths).
+	ValidateExternalSyncDatasource func(ctx context.Context, uid string) error
 }
