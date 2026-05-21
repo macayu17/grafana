@@ -30,7 +30,7 @@ func TestComputeSyncStatus(t *testing.T) {
 	findSynced := func(t *testing.T, st alertingadminv0alpha1.AlertingConfigStatus) alertingadminv0alpha1.AlertingConfigCondition {
 		t.Helper()
 		for _, c := range st.Conditions {
-			if c.Type == conditionTypeSynced {
+			if c.Type == conditionTypeExternalAlertmanagerSynced {
 				return c
 			}
 		}
@@ -38,11 +38,10 @@ func TestComputeSyncStatus(t *testing.T) {
 		return alertingadminv0alpha1.AlertingConfigCondition{}
 	}
 
-	externalSync := func(t *testing.T, st alertingadminv0alpha1.AlertingConfigStatus) *alertingadminv0alpha1.AlertingConfigV0alpha1StatusAlertmanagerExternalSync {
+	externalSync := func(t *testing.T, st alertingadminv0alpha1.AlertingConfigStatus) *alertingadminv0alpha1.AlertingConfigV0alpha1StatusExternalAlertmanagerSync {
 		t.Helper()
-		require.NotNil(t, st.Alertmanager, "Alertmanager sub-tree should be populated")
-		require.NotNil(t, st.Alertmanager.ExternalSync, "Alertmanager.ExternalSync should be populated")
-		return st.Alertmanager.ExternalSync
+		require.NotNil(t, st.ExternalAlertmanagerSync, "externalAlertmanagerSync sub-tree should be populated")
+		return st.ExternalAlertmanagerSync
 	}
 
 	t.Run("success from clean state emits Synced=True with current timestamp", func(t *testing.T) {
@@ -75,7 +74,7 @@ func TestComputeSyncStatus(t *testing.T) {
 	t.Run("consecutive failures preserve the original lastTransitionTime", func(t *testing.T) {
 		prev := &alertingadminv0alpha1.AlertingConfigStatus{
 			Conditions: []alertingadminv0alpha1.AlertingConfigCondition{{
-				Type:               conditionTypeSynced,
+				Type:               conditionTypeExternalAlertmanagerSynced,
 				Status:             alertingadminv0alpha1.AlertingConfigConditionStatusFalse,
 				LastTransitionTime: earlRFC,
 				Reason:             "MimirFetchFailed",
@@ -94,7 +93,7 @@ func TestComputeSyncStatus(t *testing.T) {
 	t.Run("failure after a prior success bumps lastTransitionTime", func(t *testing.T) {
 		prev := &alertingadminv0alpha1.AlertingConfigStatus{
 			Conditions: []alertingadminv0alpha1.AlertingConfigCondition{{
-				Type:               conditionTypeSynced,
+				Type:               conditionTypeExternalAlertmanagerSynced,
 				Status:             alertingadminv0alpha1.AlertingConfigConditionStatusTrue,
 				LastTransitionTime: earlRFC,
 				Reason:             "SyncSucceeded",
@@ -113,7 +112,7 @@ func TestComputeSyncStatus(t *testing.T) {
 	t.Run("success after a failure bumps lastTransitionTime and clears message", func(t *testing.T) {
 		prev := &alertingadminv0alpha1.AlertingConfigStatus{
 			Conditions: []alertingadminv0alpha1.AlertingConfigCondition{{
-				Type:               conditionTypeSynced,
+				Type:               conditionTypeExternalAlertmanagerSynced,
 				Status:             alertingadminv0alpha1.AlertingConfigConditionStatusFalse,
 				LastTransitionTime: earlRFC,
 				Reason:             "MimirFetchFailed",
@@ -140,10 +139,8 @@ func TestComputeSyncStatus(t *testing.T) {
 
 	t.Run("datasourceUid reflects the attempted UID, not any prior one", func(t *testing.T) {
 		prev := &alertingadminv0alpha1.AlertingConfigStatus{
-			Alertmanager: &alertingadminv0alpha1.AlertingConfigV0alpha1StatusAlertmanager{
-				ExternalSync: &alertingadminv0alpha1.AlertingConfigV0alpha1StatusAlertmanagerExternalSync{
-					DatasourceUid: strPtr("old-uid"),
-				},
+			ExternalAlertmanagerSync: &alertingadminv0alpha1.AlertingConfigV0alpha1StatusExternalAlertmanagerSync{
+				DatasourceUid: strPtr("old-uid"),
 			},
 		}
 

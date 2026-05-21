@@ -23,12 +23,13 @@ import (
 // singleton-per-org kinds in this group.
 const statusSingletonName = "default"
 
-// conditionTypeSynced mirrors the condition Type written by the sync worker
-// onto AlertingConfig.status.conditions[]. The synthetic AlertingStatus
-// projection routes this condition into status.alertmanager.externalSync.conditions
-// so the area sub-tree carries the relevant condition alongside its
-// auxiliary fields. Future concerns add their own condition types here.
-const conditionTypeSynced = "Synced"
+// conditionTypeExternalAlertmanagerSynced mirrors the condition Type
+// written by the sync worker onto AlertingConfig.status.conditions[]. The
+// synthetic AlertingStatus projection routes this condition into
+// status.externalAlertmanagerSync.conditions so each feature sub-tree
+// carries the relevant condition alongside its auxiliary fields. Future
+// features add their own condition types here.
+const conditionTypeExternalAlertmanagerSynced = "ExternalAlertmanagerSynced"
 
 // statusStorage implements a synthetic rest.Storage for the AlertingStatus
 // kind. Reads compose .status by fetching the source-of-truth kinds in this
@@ -177,64 +178,46 @@ func (s *statusStorage) synthesize(ctx context.Context, namespace string) (*v0al
 	switch {
 	case apierrors.IsNotFound(err):
 		// no config (and therefore no observation) for this org yet —
-		// leave alertmanager absent
+		// leave feature sub-trees absent
 	case err != nil:
 		return nil, err
 	default:
-		if am := projectAlertmanager(&cfg.Status); am != nil {
-			out.Status.Alertmanager = am
+		if es := projectExternalSync(&cfg.Status); es != nil {
+			out.Status.ExternalAlertmanagerSync = es
 		}
 	}
 
 	return out, nil
 }
 
-// projectAlertmanager maps AlertingConfig.status into the AlertingStatus
-// alertmanager sub-tree. Auxiliary fields (datasourceUid, origin) come from
-// status.alertmanager.externalSync; the Synced condition is routed from
-// status.conditions[] (which carries conditions for ALL concerns) into the
-// externalSync sub-tree. Returns nil when no observation has been recorded
-// for any alertmanager-area concern yet.
-func projectAlertmanager(src *v0alpha1.AlertingConfigStatus) *v0alpha1.AlertingStatusAlertingStatusAlertmanager {
-	if src == nil {
-		return nil
-	}
-	externalSync := projectExternalSync(src)
-	if externalSync == nil {
-		return nil
-	}
-	return &v0alpha1.AlertingStatusAlertingStatusAlertmanager{
-		ExternalSync: externalSync,
-	}
-}
-
-// projectExternalSync builds the externalSync sub-tree on AlertingStatus by
-// copying the matching auxiliary fields from AlertingConfig.status.alertmanager.externalSync
-// and filtering AlertingConfig.status.conditions[] for the Synced condition.
-// Returns nil when there is nothing to report (no aux fields and no Synced
-// condition).
-func projectExternalSync(src *v0alpha1.AlertingConfigStatus) *v0alpha1.AlertingStatusAlertingStatusExternalSync {
-	var out *v0alpha1.AlertingStatusAlertingStatusExternalSync
-	ensure := func() *v0alpha1.AlertingStatusAlertingStatusExternalSync {
+// projectExternalSync builds the externalAlertmanagerSync sub-tree on
+// AlertingStatus by copying the matching auxiliary fields from
+// AlertingConfig.status.externalAlertmanagerSync and filtering
+// AlertingConfig.status.conditions[] for the
+// ExternalAlertmanagerSynced condition. Returns nil when there is nothing
+// to report (no aux fields and no matching condition).
+func projectExternalSync(src *v0alpha1.AlertingConfigStatus) *v0alpha1.AlertingStatusAlertingStatusExternalAlertmanagerSync {
+	var out *v0alpha1.AlertingStatusAlertingStatusExternalAlertmanagerSync
+	ensure := func() *v0alpha1.AlertingStatusAlertingStatusExternalAlertmanagerSync {
 		if out == nil {
-			out = &v0alpha1.AlertingStatusAlertingStatusExternalSync{}
+			out = &v0alpha1.AlertingStatusAlertingStatusExternalAlertmanagerSync{}
 		}
 		return out
 	}
 
-	if src.Alertmanager != nil && src.Alertmanager.ExternalSync != nil {
-		es := src.Alertmanager.ExternalSync
+	if src.ExternalAlertmanagerSync != nil {
+		es := src.ExternalAlertmanagerSync
 		if es.DatasourceUid != nil {
 			ensure().DatasourceUid = es.DatasourceUid
 		}
 		if es.Origin != nil {
-			o := v0alpha1.AlertingStatusAlertingStatusExternalSyncOrigin(*es.Origin)
+			o := v0alpha1.AlertingStatusAlertingStatusExternalAlertmanagerSyncOrigin(*es.Origin)
 			ensure().Origin = &o
 		}
 	}
 
 	for _, c := range src.Conditions {
-		if c.Type != conditionTypeSynced {
+		if c.Type != conditionTypeExternalAlertmanagerSynced {
 			continue
 		}
 		ensure().Conditions = append(out.Conditions, v0alpha1.AlertingStatusCondition{

@@ -2,56 +2,37 @@
 
 package v0alpha1
 
-// AlertingStatusAlertmanager groups runtime observations for the alerting
-// stack. Top-level keys mirror feature groupings on
-// AlertingConfig.spec.alertmanager.
+// AlertingStatusExternalAlertmanagerSync carries the observation for the
+// external Alertmanager configuration sync worker. The aggregate handler
+// builds it by copying AlertingConfig.status.externalAlertmanagerSync
+// (auxiliary fields) and projecting
+// AlertingConfig.status.conditions[type=ExternalAlertmanagerSynced] into
+// conditions.
 // +k8s:openapi-gen=true
-type AlertingStatusAlertingStatusAlertmanager struct {
-	// externalSync is the observation payload for the external Alertmanager
-	// configuration sync worker. Mirrors
-	// AlertingConfig.spec.alertmanager.externalSync, plus the matching
-	// Synced condition routed from AlertingConfig.status.conditions[].
-	ExternalSync *AlertingStatusAlertingStatusExternalSync `json:"externalSync,omitempty"`
+type AlertingStatusAlertingStatusExternalAlertmanagerSync struct {
+	DatasourceUid *string                                                     `json:"datasourceUid,omitempty"`
+	Origin        *AlertingStatusAlertingStatusExternalAlertmanagerSyncOrigin `json:"origin,omitempty"`
+	Conditions    []AlertingStatusCondition                                   `json:"conditions,omitempty"`
 }
 
-// NewAlertingStatusAlertingStatusAlertmanager creates a new AlertingStatusAlertingStatusAlertmanager object.
-func NewAlertingStatusAlertingStatusAlertmanager() *AlertingStatusAlertingStatusAlertmanager {
-	return &AlertingStatusAlertingStatusAlertmanager{}
+// NewAlertingStatusAlertingStatusExternalAlertmanagerSync creates a new AlertingStatusAlertingStatusExternalAlertmanagerSync object.
+func NewAlertingStatusAlertingStatusExternalAlertmanagerSync() *AlertingStatusAlertingStatusExternalAlertmanagerSync {
+	return &AlertingStatusAlertingStatusExternalAlertmanagerSync{}
 }
 
-// OpenAPIModelName returns the OpenAPI model name for AlertingStatusAlertingStatusAlertmanager.
-func (AlertingStatusAlertingStatusAlertmanager) OpenAPIModelName() string {
-	return "com.github.grafana.grafana.apps.alerting.admin.pkg.apis.alertingadmin.v0alpha1.AlertingStatusAlertingStatusAlertmanager"
-}
-
-// AlertingStatusExternalSync carries the observation for the external
-// Alertmanager configuration sync worker. The aggregate handler builds it
-// by copying AlertingConfig.status.alertmanager.externalSync (auxiliary
-// fields) and projecting AlertingConfig.status.conditions[type=Synced]
-// into conditions.
-// +k8s:openapi-gen=true
-type AlertingStatusAlertingStatusExternalSync struct {
-	DatasourceUid *string                                         `json:"datasourceUid,omitempty"`
-	Origin        *AlertingStatusAlertingStatusExternalSyncOrigin `json:"origin,omitempty"`
-	Conditions    []AlertingStatusCondition                       `json:"conditions,omitempty"`
-}
-
-// NewAlertingStatusAlertingStatusExternalSync creates a new AlertingStatusAlertingStatusExternalSync object.
-func NewAlertingStatusAlertingStatusExternalSync() *AlertingStatusAlertingStatusExternalSync {
-	return &AlertingStatusAlertingStatusExternalSync{}
-}
-
-// OpenAPIModelName returns the OpenAPI model name for AlertingStatusAlertingStatusExternalSync.
-func (AlertingStatusAlertingStatusExternalSync) OpenAPIModelName() string {
-	return "com.github.grafana.grafana.apps.alerting.admin.pkg.apis.alertingadmin.v0alpha1.AlertingStatusAlertingStatusExternalSync"
+// OpenAPIModelName returns the OpenAPI model name for AlertingStatusAlertingStatusExternalAlertmanagerSync.
+func (AlertingStatusAlertingStatusExternalAlertmanagerSync) OpenAPIModelName() string {
+	return "com.github.grafana.grafana.apps.alerting.admin.pkg.apis.alertingadmin.v0alpha1.AlertingStatusAlertingStatusExternalAlertmanagerSync"
 }
 
 // Condition mirrors metav1.Condition. Declared inline because the app-sdk
 // codegen in this repo does not yet have a built-in path for referencing
 // the k8s metav1.Condition type from CUE. Field semantics are k8s-standard:
 //   - status flips between True/False/Unknown.
-//   - lastTransitionTime advances only when status flips (managed by
-//     meta.SetStatusCondition in the sync worker).
+//   - lastTransitionTime advances only when status flips (managed by the
+//     hand-rolled equivalent of meta.SetStatusCondition in the sync
+//     worker, since AlertingConfigCondition is a codegen-emitted type
+//     distinct from metav1.Condition).
 //   - reason is a PascalCase machine-readable enum (e.g. "SyncSucceeded",
 //     "MimirFetchFailed"); see SyncReason in the syncer.
 //   - message is human-readable detail.
@@ -104,8 +85,11 @@ func (AlertingStatusstatusOperatorState) OpenAPIModelName() string {
 
 // +k8s:openapi-gen=true
 type AlertingStatusStatus struct {
-	// alertmanager groups observations for the per-org alerting stack.
-	Alertmanager *AlertingStatusAlertingStatusAlertmanager `json:"alertmanager,omitempty"`
+	// externalAlertmanagerSync is the observation payload for the external
+	// Alertmanager configuration sync worker. Mirrors the same key on
+	// AlertingConfig.status, plus the matching ExternalAlertmanagerSynced
+	// condition routed from AlertingConfig.status.conditions[].
+	ExternalAlertmanagerSync *AlertingStatusAlertingStatusExternalAlertmanagerSync `json:"externalAlertmanagerSync,omitempty"`
 	// operatorStates is a map of operator ID to operator state evaluations.
 	// Any operator which consumes this kind SHOULD add its state evaluation information to this field.
 	OperatorStates map[string]AlertingStatusstatusOperatorState `json:"operatorStates,omitempty"`
@@ -124,16 +108,16 @@ func (AlertingStatusStatus) OpenAPIModelName() string {
 }
 
 // +k8s:openapi-gen=true
-type AlertingStatusAlertingStatusExternalSyncOrigin string
+type AlertingStatusAlertingStatusExternalAlertmanagerSyncOrigin string
 
 const (
-	AlertingStatusAlertingStatusExternalSyncOriginApi AlertingStatusAlertingStatusExternalSyncOrigin = "api"
-	AlertingStatusAlertingStatusExternalSyncOriginIni AlertingStatusAlertingStatusExternalSyncOrigin = "ini"
+	AlertingStatusAlertingStatusExternalAlertmanagerSyncOriginApi AlertingStatusAlertingStatusExternalAlertmanagerSyncOrigin = "api"
+	AlertingStatusAlertingStatusExternalAlertmanagerSyncOriginIni AlertingStatusAlertingStatusExternalAlertmanagerSyncOrigin = "ini"
 )
 
-// OpenAPIModelName returns the OpenAPI model name for AlertingStatusAlertingStatusExternalSyncOrigin.
-func (AlertingStatusAlertingStatusExternalSyncOrigin) OpenAPIModelName() string {
-	return "com.github.grafana.grafana.apps.alerting.admin.pkg.apis.alertingadmin.v0alpha1.AlertingStatusAlertingStatusExternalSyncOrigin"
+// OpenAPIModelName returns the OpenAPI model name for AlertingStatusAlertingStatusExternalAlertmanagerSyncOrigin.
+func (AlertingStatusAlertingStatusExternalAlertmanagerSyncOrigin) OpenAPIModelName() string {
+	return "com.github.grafana.grafana.apps.alerting.admin.pkg.apis.alertingadmin.v0alpha1.AlertingStatusAlertingStatusExternalAlertmanagerSyncOrigin"
 }
 
 // +k8s:openapi-gen=true

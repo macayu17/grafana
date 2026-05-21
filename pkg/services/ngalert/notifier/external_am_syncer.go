@@ -39,14 +39,14 @@ import (
 const configSingletonName = "default"
 
 // externalSyncOrigin aliases the codegen-emitted enum for the auxiliary
-// origin field on AlertingConfig.status.alertmanager.externalSync. The
+// origin field on AlertingConfig.status.externalAlertmanagerSync. The
 // generated name is unwieldy in expressions; the alias keeps call sites
 // readable without obscuring the underlying type.
-type externalSyncOrigin = alertingadminv0alpha1.AlertingConfigV0alpha1StatusAlertmanagerExternalSyncOrigin
+type externalSyncOrigin = alertingadminv0alpha1.AlertingConfigV0alpha1StatusExternalAlertmanagerSyncOrigin
 
 const (
-	originAPI = alertingadminv0alpha1.AlertingConfigV0alpha1StatusAlertmanagerExternalSyncOriginApi
-	originIni = alertingadminv0alpha1.AlertingConfigV0alpha1StatusAlertmanagerExternalSyncOriginIni
+	originAPI = alertingadminv0alpha1.AlertingConfigV0alpha1StatusExternalAlertmanagerSyncOriginApi
+	originIni = alertingadminv0alpha1.AlertingConfigV0alpha1StatusExternalAlertmanagerSyncOriginIni
 )
 
 // mimirConfigResponse is the Mimir/Cortex alertmanager configuration API response.
@@ -55,14 +55,16 @@ type mimirConfigResponse struct {
 	TemplateFiles      map[string]string `yaml:"template_files" json:"template_files"`
 }
 
-// Synced is the condition type carried on ExternalAlertmanagerSync.status.conditions
-// — the boolean "is sync currently working?" dimension. Future state dimensions
-// land as additional condition types alongside this one.
-const conditionTypeSynced = "Synced"
+// conditionTypeExternalAlertmanagerSynced is the condition Type carried on
+// AlertingConfig.status.conditions[] reporting whether the external
+// Alertmanager configuration sync is currently working. Feature-qualified
+// so it can coexist with future feature condition types on the same
+// .conditions[] array unambiguously (e.g. SimplifiedRoutingApplied).
+const conditionTypeExternalAlertmanagerSynced = "ExternalAlertmanagerSynced"
 
-// conditionReasonSyncSucceeded is the PascalCase reason used on the Synced
-// condition when sync succeeds. Failure reasons come from SyncReason values
-// (see ConditionReason() below).
+// conditionReasonSyncSucceeded is the PascalCase reason used on the
+// ExternalAlertmanagerSynced condition when sync succeeds. Failure reasons
+// come from SyncReason values (see ConditionReason() below).
 const conditionReasonSyncSucceeded = "SyncSucceeded"
 
 // SyncReason categorises a sync failure. The constant value is the snake_case
@@ -476,11 +478,9 @@ func computeSyncStatus(prev *alertingadminv0alpha1.AlertingConfigStatus, uid str
 	uidCopy := uid
 	originCopy := origin
 	st := alertingadminv0alpha1.AlertingConfigStatus{
-		Alertmanager: &alertingadminv0alpha1.AlertingConfigV0alpha1StatusAlertmanager{
-			ExternalSync: &alertingadminv0alpha1.AlertingConfigV0alpha1StatusAlertmanagerExternalSync{
-				DatasourceUid: &uidCopy,
-				Origin:        &originCopy,
-			},
+		ExternalAlertmanagerSync: &alertingadminv0alpha1.AlertingConfigV0alpha1StatusExternalAlertmanagerSync{
+			DatasourceUid: &uidCopy,
+			Origin:        &originCopy,
 		},
 	}
 
@@ -499,7 +499,7 @@ func computeSyncStatus(prev *alertingadminv0alpha1.AlertingConfigStatus, uid str
 	// (no prior Synced condition) sets it to `now`.
 	transitionTime := now.UTC().Format(time.RFC3339)
 	for _, c := range prevConditions(prev) {
-		if c.Type == conditionTypeSynced {
+		if c.Type == conditionTypeExternalAlertmanagerSynced {
 			if c.Status == newStatus {
 				transitionTime = c.LastTransitionTime
 			}
@@ -508,7 +508,7 @@ func computeSyncStatus(prev *alertingadminv0alpha1.AlertingConfigStatus, uid str
 	}
 
 	synced := alertingadminv0alpha1.AlertingConfigCondition{
-		Type:               conditionTypeSynced,
+		Type:               conditionTypeExternalAlertmanagerSynced,
 		Status:             newStatus,
 		LastTransitionTime: transitionTime,
 		Reason:             newReason,
@@ -521,7 +521,7 @@ func computeSyncStatus(prev *alertingadminv0alpha1.AlertingConfigStatus, uid str
 	// controllers writing their own condition types on this resource see
 	// their conditions left untouched here.
 	for _, c := range prevConditions(prev) {
-		if c.Type != conditionTypeSynced {
+		if c.Type != conditionTypeExternalAlertmanagerSynced {
 			st.Conditions = append(st.Conditions, c)
 		}
 	}
@@ -579,12 +579,11 @@ func (s *ExternalAMSyncer) fetchExtraConfig(ctx context.Context, orgID int64, ui
 // UID. Returns "" when any level in the chain is unset.
 func externalSyncDatasourceUIDFromConfig(c *alertingadminv0alpha1.AlertingConfig) string {
 	if c == nil ||
-		c.Spec.Alertmanager == nil ||
-		c.Spec.Alertmanager.ExternalSync == nil ||
-		c.Spec.Alertmanager.ExternalSync.DatasourceUid == nil {
+		c.Spec.ExternalAlertmanagerSync == nil ||
+		c.Spec.ExternalAlertmanagerSync.DatasourceUid == nil {
 		return ""
 	}
-	return *c.Spec.Alertmanager.ExternalSync.DatasourceUid
+	return *c.Spec.ExternalAlertmanagerSync.DatasourceUid
 }
 
 // resolveExternalAMUIDForOrg returns the datasource UID to use for external AM
