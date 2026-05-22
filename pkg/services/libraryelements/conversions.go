@@ -18,7 +18,7 @@ func ToCreateLibraryElementCommand(raw runtime.Object) (*model.CreateLibraryElem
 	if err != nil {
 		return nil, err
 	}
-	folderUID := folder.LegacyFolderUID(obj.GetFolder())
+	folderUID := folder.ToLegacyFolderUID(obj.GetFolder())
 	cmd := &model.CreateLibraryElementCommand{
 		UID:       obj.GetName(),
 		FolderUID: &folderUID,
@@ -40,7 +40,7 @@ func ToPatchLibraryElementCommand(raw runtime.Object) (*model.PatchLibraryElemen
 	if err != nil {
 		return nil, err
 	}
-	folderUID := folder.LegacyFolderUID(obj.GetFolder())
+	folderUID := folder.ToLegacyFolderUID(obj.GetFolder())
 	cmd := &model.PatchLibraryElementCommand{
 		UID:       obj.GetName(),
 		FolderUID: &folderUID,

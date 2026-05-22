@@ -852,12 +852,12 @@ func TestConvertHttpSearchRequestToResourceSearchRequest(t *testing.T) {
 				Federated: []*resourcepb.ResourceKey{folderKey},
 			},
 		},
-		"root folder is queried with the canonical \"root\" value": {
+		"root folder is queried with the canonical \"general\" value": {
 			queryString: "folder=general",
 			expected: &resourcepb.ResourceSearchRequest{
 				Options: &resourcepb.ListOptions{
 					Key:    dashboardKey,
-					Fields: []*resourcepb.Requirement{{Key: "folder", Operator: "=", Values: []string{"root"}}},
+					Fields: []*resourcepb.Requirement{{Key: "folder", Operator: "=", Values: []string{"general"}}},
 				},
 				Query:     "",
 				Limit:     50,

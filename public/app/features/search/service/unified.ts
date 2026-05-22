@@ -41,7 +41,6 @@ export type SearchHit = {
   resource: string; // dashboards | folders
   name: string;
   title: string;
-  location: string;
   folder: string;
   tags: string[];
 
@@ -268,17 +267,18 @@ export class UnifiedSearcher implements GrafanaSearcher {
 
     const locationInfo = await this.locationInfo;
     const hits = rsp.hits.map((hit) => {
-      // The apistore stamps a root sentinel ("root", historically "general")
-      // on root-parented resources. Neither value lives in locationInfo as a
-      // real folder, but the dashboard isn't inaccessible — it's at the root.
-      // Collapse both to "general" so it renders under the synthetic root.
+      // The apistore stamps "general" on root-parented resources, but the
+      // legacy empty annotation may still be present. "general" doesn't live
+      // in locationInfo as a real folder — the dashboard isn't inaccessible,
+      // it's at the root. Collapse the root sentinels to "general" so it
+      // renders under the synthetic root.
       if (hit.folder === undefined || isRootFolderUID(hit.folder)) {
-        return { ...hit, location: 'general', folder: 'general' };
+        return { ...hit, folder: 'general' };
       }
 
       // this means a user has permission to see this dashboard, but not the folder contents
       if (locationInfo[hit.folder] === undefined) {
-        return { ...hit, location: 'sharedwithme', folder: 'sharedwithme' };
+        return { ...hit, folder: 'sharedwithme' };
       }
 
       return hit;

@@ -523,7 +523,7 @@ func (dr *DashboardServiceImpl) GetDashboardsByLibraryPanelUID(ctx context.Conte
 	for _, row := range results.Hits {
 		dashes = append(dashes, &dashboards.DashboardRef{
 			UID:       row.Name,
-			FolderUID: folder.LegacyFolderUID(row.Folder),
+			FolderUID: folder.ToLegacyFolderUID(row.Folder),
 			ID:        row.Field.GetNestedInt64(resource.SEARCH_FIELD_LEGACY_ID), // nolint:staticcheck
 		})
 	}
@@ -1517,7 +1517,7 @@ func (dr *DashboardServiceImpl) FindDashboards(ctx context.Context, query *dashb
 			Slug:        slugify.Slugify(hit.Title),
 			Description: hit.Description,
 			IsFolder:    false,
-			FolderUID:   folder.LegacyFolderUID(hit.Folder),
+			FolderUID:   folder.ToLegacyFolderUID(hit.Folder),
 			FolderTitle: folderTitle,
 			FolderID:    folderID,
 			FolderSlug:  slugify.Slugify(folderTitle),
@@ -1949,10 +1949,10 @@ func (dr *DashboardServiceImpl) buildDashboardSearchRequest(query *dashboards.Fi
 	if len(query.FolderUIDs) > 0 {
 		// Grafana frontend issues a call to search for dashboards in the
 		// "general" folder. General folder doesn't exist (it is a synthetic
-		// root). The index may carry any of three root sentinels: legacy
-		// empty values from pre-migration rows, "general" from legacy /api/
-		// writes, or the canonical "root" written by the apistore today —
-		// so when the caller asks for the root, match all three.
+		// root). The index may carry either of two root sentinels: legacy
+		// empty values from pre-migration rows, or the canonical "general"
+		// stamped by the apistore on write — so when the caller asks for the
+		// root, match both.
 		values := make([]string, 0, len(query.FolderUIDs)+2)
 		includeRoot := false
 		for _, uid := range query.FolderUIDs {
@@ -1963,7 +1963,7 @@ func (dr *DashboardServiceImpl) buildDashboardSearchRequest(query *dashboards.Fi
 			values = append(values, uid)
 		}
 		if includeRoot {
-			values = append(values, "", folder.GeneralFolderUID, folder.RootFolderName)
+			values = append(values, "", folder.GeneralFolderUID)
 		}
 
 		req := []*resourcepb.Requirement{{
@@ -2185,7 +2185,7 @@ func (dr *DashboardServiceImpl) searchDashboardsThroughK8s(ctx context.Context, 
 			UID:       hit.Name,
 			Slug:      slugify.Slugify(hit.Title),
 			Title:     hit.Title,
-			FolderUID: folder.LegacyFolderUID(hit.Folder),
+			FolderUID: folder.ToLegacyFolderUID(hit.Folder),
 		}
 	}
 
@@ -2269,7 +2269,7 @@ func (dr *DashboardServiceImpl) unstructuredToLegacyDashboardWithUsers(item *uns
 		ID:         obj.GetDeprecatedInternalID(), // nolint:staticcheck
 		UID:        uid,
 		Slug:       slugify.Slugify(title),
-		FolderUID:  folder.LegacyFolderUID(obj.GetFolder()),
+		FolderUID:  folder.ToLegacyFolderUID(obj.GetFolder()),
 		Version:    int(dashVersion),
 		Data:       simplejson.NewFromAny(spec),
 		APIVersion: strings.TrimPrefix(item.GetAPIVersion(), dashboardv0.GROUP+"/"),

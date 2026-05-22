@@ -944,8 +944,8 @@ func (s *Service) checkInheritedPermissions(ctx context.Context, scopeMap map[st
 	}
 
 	// The unified apistore stamps an explicit root sentinel
-	// (folder.RootFolderName, historically also "general") as the parent
-	// annotation for root-parented resources where it used to be empty.
+	// (folder.GeneralFolderUID) as the parent annotation for root-parented
+	// resources where it used to be empty.
 	// For non-create verbs the synthetic root is not a real parent that
 	// grants inheritance — granting a read role on folders:uid:general
 	// (e.g. fixed:folders.general:reader, which exists so viewers can see

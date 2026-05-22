@@ -49,7 +49,7 @@ func (t *folderTree) In(folder string) bool {
 
 // in is the unlocked implementation of In used by helpers that already hold the mutex.
 func (t *folderTree) in(folder string) bool {
-	folder = foldermodel.LegacyFolderUID(folder)
+	folder = foldermodel.ToLegacyFolderUID(folder)
 	_, ok := t.tree[folder]
 	return ok || folder == ""
 }
@@ -95,8 +95,8 @@ func (t *folderTree) DirPath(folder, baseFolder string) (fid Folder, ok bool) {
 func (t *folderTree) dirPath(folder, baseFolder string) (fid Folder, ok bool) {
 	// Normalize so the canonical "general" root sentinel is treated as "" for
 	// the lookups below; the tree stores root parents as "" internally.
-	folder = foldermodel.LegacyFolderUID(folder)
-	baseFolder = foldermodel.LegacyFolderUID(baseFolder)
+	folder = foldermodel.ToLegacyFolderUID(folder)
+	baseFolder = foldermodel.ToLegacyFolderUID(baseFolder)
 	// Inline In() logic to avoid deadlock when called from other methods that hold locks
 	folderInTree := t.in(folder)
 	baseFolderInTree := t.in(baseFolder)
@@ -131,7 +131,7 @@ func (t *folderTree) dirPath(folder, baseFolder string) (fid Folder, ok bool) {
 
 // Add inserts or updates a folder entry and keeps the UID and path indexes in sync.
 func (t *folderTree) Add(folder Folder, parent string) {
-	parent = foldermodel.LegacyFolderUID(parent)
+	parent = foldermodel.ToLegacyFolderUID(parent)
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	_, exists := t.tree[folder.ID]
@@ -230,7 +230,7 @@ func (t *folderTree) AddUnstructured(item *unstructured.Unstructured) error {
 		return fmt.Errorf("extract meta accessor: %w", err)
 	}
 
-	parent := foldermodel.LegacyFolderUID(meta.GetFolder())
+	parent := foldermodel.ToLegacyFolderUID(meta.GetFolder())
 	folder := Folder{
 		Title:    meta.FindTitle(item.GetName()),
 		ID:       item.GetName(),
@@ -254,7 +254,7 @@ func NewFolderTreeFromResourceList(resources *provisioning.ResourceList) FolderT
 			continue
 		}
 
-		parent := foldermodel.LegacyFolderUID(rf.Folder)
+		parent := foldermodel.ToLegacyFolderUID(rf.Folder)
 		tree[rf.Name] = parent
 		folderIDs[rf.Name] = Folder{
 			Title:        rf.Title,

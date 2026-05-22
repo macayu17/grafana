@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apiserver/pkg/registry/rest"
 
+	"github.com/grafana/grafana-app-sdk/logging"
 	folders "github.com/grafana/grafana/apps/folder/pkg/apis/folder/v1"
 	"github.com/grafana/grafana/pkg/apimachinery/errutil"
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
@@ -76,7 +77,6 @@ func validateOnCreate(ctx context.Context, f *folders.Folder, getter parentsGett
 	id := f.Name
 
 	if slices.Contains([]string{
-		folder.RootFolderName, // "root"
 		folder.GeneralFolderUID,
 		folder.SharedWithMeFolderUID,
 	}, id) {
@@ -164,6 +164,11 @@ func validateOnUpdate(ctx context.Context,
 		return nil
 	}
 
+	// the k6 folder itself may not be moved (matches legacy folder.Service.Move)
+	if obj.Name == accesscontrol.K6FolderUID {
+		return folder.ErrBadRequest.Errorf("k6 project may not be moved")
+	}
+
 	// Validate the move operation
 	newParent := folderObj.GetFolder()
 
@@ -175,7 +180,7 @@ func validateOnUpdate(ctx context.Context,
 		return nil
 	}
 
-	// folder cannot be moved to a k6 folder
+	// folder cannot be moved into the k6 folder
 	if newParent == accesscontrol.K6FolderUID {
 		return folder.ErrFolderCannotBeMovedToK6.Errorf("k6 project may not be moved")
 	}
@@ -362,7 +367,21 @@ func getChildrenBatch(ctx context.Context, searcher resourcepb.ResourceIndexClie
 func validateOnDelete(ctx context.Context,
 	f *folders.Folder,
 	searcher resourcepb.ResourceIndexClient,
+	deleteOptions *metav1.DeleteOptions,
+	cascadeDeleteEnabled bool,
 ) error {
+	// Non-empty folder delete is opt-in via gracePeriodSeconds=0 when kubernetesFolderCascadeDelete
+	// is enabled (same pattern as dashboard delete validation). This only bypasses the empty-folder
+	// check; until cascade reconciliation runs, child resources are left orphaned.
+	if cascadeDeleteEnabled && forceDeleteFromDeleteOptions(deleteOptions) {
+		logging.FromContext(ctx).Warn(
+			"folder force-delete bypassing empty check; cascade deletion is not yet wired up so sub-folders, dashboards, alert rules, and library elements under this folder will be orphaned. This is a temporary state during the cascade delete rollout.",
+			"folder", f.Name,
+			"namespace", f.Namespace,
+		)
+		return nil
+	}
+
 	resp, err := searcher.GetStats(ctx, &resourcepb.ResourceStatsRequest{Namespace: f.Namespace, Kinds: countedKinds, Folder: []string{f.Name}})
 	if err != nil {
 		return err

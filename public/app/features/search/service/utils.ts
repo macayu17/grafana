@@ -181,16 +181,15 @@ export function resourceToSearchResult(
       field.deletedBy = deletedByDisplayMap?.get(deletedByUid) ?? DELETED_BY_UNKNOWN;
     }
 
-    // The apistore stamps "root" on root-parented dashboards; collapse that
-    // (and the legacy empty value) into the "general" sentinel that the rest
-    // of the search UI uses for the synthetic root.
+    // Collapse the legacy empty value (and any apistore-stamped sentinel) into
+    // the "general" UID that the rest of the search UI uses for the synthetic
+    // root.
     const folderAnno = item?.metadata?.annotations?.[AnnoKeyFolder] ?? '';
     const folder = isRootFolderUID(folderAnno) ? 'general' : folderAnno;
     const hit: SearchHit = {
       resource: 'dashboards',
       name: item.metadata.name,
       title: item.spec?.title,
-      location: 'general',
       folder,
       tags: item.spec?.tags || [],
       field,

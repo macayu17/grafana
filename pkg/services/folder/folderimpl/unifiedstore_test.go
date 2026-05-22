@@ -324,10 +324,9 @@ func TestGetChildren(t *testing.T) {
 						Key:      resource.SEARCH_FIELD_FOLDER,
 						Operator: string(selection.In),
 						// Root-level resources may be stored with the legacy
-						// empty value, the /api/ "general" sentinel, or the
-						// canonical "root" sentinel the apistore now writes;
-						// all three must match.
-						Values: []string{"", folder.GeneralFolderUID, folder.RootFolderName},
+						// empty value or the canonical "general" sentinel that
+						// the apistore now writes; both must match.
+						Values: []string{"", folder.GeneralFolderUID},
 					},
 					{
 						Key:      resource.SEARCH_FIELD_NAME,

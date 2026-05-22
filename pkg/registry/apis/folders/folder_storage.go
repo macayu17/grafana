@@ -158,7 +158,6 @@ func (s *folderStorage) setDefaultFolderPermissions(ctx context.Context, orgID i
 	// the root; treat both the legacy empty value and "general" as root so the
 	// editor/viewer default permissions are still granted on new root folders.
 	isNested := !folder.IsRootFolderUID(parentUID)
-	//nolint:staticcheck // not yet migrated to OpenFeature
 	if isNested {
 		// No permissions on nested folders when kubernetesDashboards is enabled
 		return nil

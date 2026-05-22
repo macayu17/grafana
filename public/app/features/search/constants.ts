@@ -10,19 +10,15 @@ export const SEARCH_EXPANDED_FOLDER_STORAGE_KEY = 'grafana.search.expanded-folde
 export const GENERAL_FOLDER_ID = 0;
 export const GENERAL_FOLDER_UID = 'general';
 export const GENERAL_FOLDER_TITLE = 'Dashboards';
-// Canonical root sentinel the apistore stamps on root-parented resources.
-// The legacy /api/ surface returns "" or "general"; both are equivalent
-// to ROOT_FOLDER_UID — use isRootFolderUID() to treat them uniformly.
-export const ROOT_FOLDER_UID = 'root';
 
 /**
  * Returns true when `uid` identifies the synthetic root folder. The apistore
- * now stamps `ROOT_FOLDER_UID` on root-parented resources, but `""` (legacy
- * empty) and `GENERAL_FOLDER_UID` (legacy /api/) still show up across the
- * codebase, so callers that want "is this the root?" must accept all three.
+ * now stamps `GENERAL_FOLDER_UID` on root-parented resources, but `""`
+ * (legacy empty annotation) still shows up across the codebase, so callers
+ * that want "is this the root?" must accept both.
  */
 export function isRootFolderUID(uid?: string): boolean {
-  return !uid || uid === GENERAL_FOLDER_UID || uid === ROOT_FOLDER_UID;
+  return !uid || uid === GENERAL_FOLDER_UID;
 }
 export const SEARCH_PANELS_LOCAL_STORAGE_KEY = 'grafana.search.include.panels';
 export const SEARCH_SELECTED_LAYOUT = 'grafana.search.layout';

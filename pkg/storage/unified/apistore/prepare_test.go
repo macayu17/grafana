@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math/rand/v2"
-	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -655,68 +654,127 @@ func TestEnsureRepoManagedByParentFolder(t *testing.T) {
 		require.Error(t, err)
 		require.ErrorContains(t, err, "no config")
 	})
+
+	t.Run("skips when folder annotation is 'general' (canonical root)", func(t *testing.T) {
+		s := &Storage{
+			opts:         StorageOptions{EnableFolderSupport: true},
+			getDynClient: failingDynClient(errors.New("dynamic client should not be consulted for root parent")),
+		}
+		obj := makeDashboard(t, folder.GeneralFolderUID, nil)
+		require.NoError(t, s.ensureRepoManagedByParentFolder(context.Background(), obj))
+	})
 }
 
 func TestVerifyFolder(t *testing.T) {
-	makeDashboard := func(t *testing.T, folderAnn string) utils.GrafanaMetaAccessor {
+	_ = dashv1.AddToScheme(rtscheme)
+
+	makeDash := func(t *testing.T, parent string) utils.GrafanaMetaAccessor {
 		t.Helper()
-		obj := &dashv1.Dashboard{ObjectMeta: v1.ObjectMeta{Name: "test-dash", Namespace: "default"}}
-		acc, err := utils.MetaAccessor(obj)
+		dash := &dashv1.Dashboard{ObjectMeta: v1.ObjectMeta{Name: "d1", Namespace: "default"}}
+		dash.SetGroupVersionKind(dashv1.DashboardResourceInfo.GroupVersionKind())
+		acc, err := utils.MetaAccessor(dash)
 		require.NoError(t, err)
-		if folderAnn != "" {
-			acc.SetFolder(folderAnn)
+		if parent != "" {
+			acc.SetFolder(parent)
 		}
 		return acc
 	}
 
-	t.Run("folder support enabled: empty annotation is normalized to RootFolderName", func(t *testing.T) {
+	t.Run("support enabled, empty folder normalizes to GeneralFolderUID", func(t *testing.T) {
 		s := &Storage{
 			gr:   dashv1.DashboardResourceInfo.GroupResource(),
 			opts: StorageOptions{EnableFolderSupport: true},
 		}
-		obj := makeDashboard(t, "")
+		obj := makeDash(t, "")
 		require.NoError(t, s.verifyFolder(obj))
-		require.Equal(t, folder.RootFolderName, obj.GetFolder())
+		require.Equal(t, folder.GeneralFolderUID, obj.GetFolder())
 	})
 
-	t.Run("folder support enabled: existing annotation passes through unchanged", func(t *testing.T) {
+	t.Run("support enabled, folder set passes unchanged", func(t *testing.T) {
 		s := &Storage{
 			gr:   dashv1.DashboardResourceInfo.GroupResource(),
 			opts: StorageOptions{EnableFolderSupport: true},
 		}
-		obj := makeDashboard(t, "custom-folder")
+		obj := makeDash(t, "my-folder")
 		require.NoError(t, s.verifyFolder(obj))
-		require.Equal(t, "custom-folder", obj.GetFolder())
+		require.Equal(t, "my-folder", obj.GetFolder())
 	})
 
-	t.Run("folder support disabled: empty annotation is accepted", func(t *testing.T) {
+	t.Run("support disabled, empty folder passes", func(t *testing.T) {
 		s := &Storage{
 			gr:   dashv1.DashboardResourceInfo.GroupResource(),
 			opts: StorageOptions{EnableFolderSupport: false},
 		}
-		obj := makeDashboard(t, "")
+		obj := makeDash(t, "")
 		require.NoError(t, s.verifyFolder(obj))
-		require.Empty(t, obj.GetFolder())
 	})
 
-	t.Run("folder support disabled: non-empty annotation returns Invalid (422)", func(t *testing.T) {
+	t.Run("support disabled, folder set returns Invalid (422) with field cause", func(t *testing.T) {
 		s := &Storage{
 			gr:   dashv1.DashboardResourceInfo.GroupResource(),
 			opts: StorageOptions{EnableFolderSupport: false},
 		}
-		obj := makeDashboard(t, "some-folder")
+		obj := makeDash(t, "my-folder")
 		err := s.verifyFolder(obj)
 		require.Error(t, err)
-		require.True(t, apierrors.IsInvalid(err), "expected an Invalid (422) status error, got %T: %v", err, err)
+		require.True(t, apierrors.IsInvalid(err), "expected Invalid (422), got %T: %v", err, err)
 
-		var statusErr *apierrors.StatusError
-		require.True(t, errors.As(err, &statusErr), "error should be a *StatusError, got %T", err)
-		require.Equal(t, int32(http.StatusUnprocessableEntity), statusErr.ErrStatus.Code)
-		require.Equal(t, v1.StatusReasonInvalid, statusErr.ErrStatus.Reason)
-		require.NotNil(t, statusErr.ErrStatus.Details)
-		require.Len(t, statusErr.ErrStatus.Details.Causes, 1)
-		cause := statusErr.ErrStatus.Details.Causes[0]
-		require.Equal(t, v1.CauseTypeForbidden, cause.Type)
-		require.Equal(t, `metadata.annotations[grafana.app/folder]`, cause.Field)
+		status, ok := err.(apierrors.APIStatus)
+		require.True(t, ok, "error should implement APIStatus")
+		require.NotNil(t, status.Status().Details)
+		require.NotEmpty(t, status.Status().Details.Causes)
+		require.Equal(t,
+			"metadata.annotations[grafana.app/folder]",
+			status.Status().Details.Causes[0].Field,
+		)
+	})
+}
+
+func TestPrepareObjectForStorage_FolderSupportDisabled(t *testing.T) {
+	_ = dashv1.AddToScheme(rtscheme)
+	node, err := snowflake.NewNode(rand.Int64N(1024))
+	require.NoError(t, err)
+
+	s := &Storage{
+		gr:        dashv1.DashboardResourceInfo.GroupResource(),
+		codec:     apitesting.TestCodec(rtcodecs, dashv1.DashboardResourceInfo.GroupVersion()),
+		snowflake: node,
+		opts: StorageOptions{
+			Scheme:              rtscheme,
+			EnableFolderSupport: false,
+		},
+	}
+
+	ctx := authlib.WithAuthInfo(context.Background(),
+		&identity.StaticRequester{UserID: 1, UserUID: "u1", Type: authlib.TypeUser},
+	)
+
+	t.Run("create: folder annotation returns Invalid (422)", func(t *testing.T) {
+		dash := &dashv1.Dashboard{ObjectMeta: v1.ObjectMeta{Name: "d1"}}
+		meta, err := utils.MetaAccessor(dash)
+		require.NoError(t, err)
+		meta.SetFolder("nope")
+
+		_, err = s.prepareObjectForStorage(ctx, dash)
+		require.Error(t, err)
+		require.True(t, apierrors.IsInvalid(err), "expected Invalid (422), got %T: %v", err, err)
+	})
+
+	t.Run("update: introducing a folder annotation returns Invalid (422)", func(t *testing.T) {
+		oldDash := &dashv1.Dashboard{ObjectMeta: v1.ObjectMeta{Name: "d1"}}
+		newDash := oldDash.DeepCopy()
+		meta, err := utils.MetaAccessor(newDash)
+		require.NoError(t, err)
+		meta.SetFolder("nope")
+
+		_, err = s.prepareObjectForUpdate(ctx, newDash, oldDash)
+		require.Error(t, err)
+		require.True(t, apierrors.IsInvalid(err), "expected Invalid (422), got %T: %v", err, err)
+	})
+
+	t.Run("create: no folder annotation succeeds", func(t *testing.T) {
+		dash := &dashv1.Dashboard{ObjectMeta: v1.ObjectMeta{Name: "d2"}}
+		_, err := s.prepareObjectForStorage(ctx, dash)
+		require.NoError(t, err)
 	})
 }

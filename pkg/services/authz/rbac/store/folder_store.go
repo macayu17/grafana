@@ -174,9 +174,8 @@ func (s *APIFolderStore) ListFolders(ctx context.Context, ns types.NamespaceInfo
 		folder := Folder{UID: object.GetName()}
 		parent := object.GetFolder()
 		// The unified apistore stamps an explicit root sentinel
-		// (folder.RootFolderName, historically also "general") as the
-		// parent annotation for root-parented folders where it used to be
-		// empty. The general folder isn't a real Zanzana/rbac entity — if
+		// (folder.GeneralFolderUID) as the parent annotation for
+		// root-parented folders where it used to be empty. The general folder isn't a real Zanzana/rbac entity — if
 		// it appears as a parent in the tree, ancestors of any nested
 		// folder would walk up to "general" and (incorrectly) match scopes
 		// such as folders:uid:general granted by

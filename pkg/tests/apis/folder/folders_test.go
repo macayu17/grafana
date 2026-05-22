@@ -2246,9 +2246,9 @@ func TestIntegrationProvisionedFolderPropagatesLabelsAndAnnotations(t *testing.T
 	expectedAnnotations := map[string]string{
 		"grafana.app/createdBy": "access-policy:service",
 		// Root-level resources are written with the canonical
-		// folder.RootFolderName sentinel; legacy responses still surface
+		// folder.GeneralFolderUID sentinel; legacy responses still surface
 		// this as the empty string.
-		"grafana.app/folder":    folder.RootFolderName,
+		"grafana.app/folder":    folder.GeneralFolderUID,
 		"grafana.app/managedBy": "classic-file-provisioning",
 		"grafana.app/managerId": "provisioned dashboards",
 	}

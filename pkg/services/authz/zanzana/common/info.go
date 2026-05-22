@@ -194,11 +194,11 @@ func (r ResourceInfo) FolderIdent() string {
 		return ""
 	}
 	// The unified apistore stamps an explicit root sentinel
-	// (folder.RootFolderName, historically also "general") on root-parented
-	// resources where the annotation used to be empty. For stored resources
-	// this is a "no parent folder" marker and must yield the empty ident
-	// here — otherwise folder-inherited permissions on the synthetic
-	// general folder would leak access to every root-parented resource.
+	// (folder.GeneralFolderUID) on root-parented resources where the
+	// annotation used to be empty. For stored resources this is a "no parent
+	// folder" marker and must yield the empty ident here — otherwise
+	// folder-inherited permissions on the synthetic general folder would
+	// leak access to every root-parented resource.
 	// The one exception is the create-verb special case
 	// (rootForCreate=true) where the general folder is a real Zanzana
 	// entity used to answer "may I create at root?".
