@@ -820,7 +820,7 @@ func successfulResponse() response.Response {
 func getWorkingFolderUID(c *contextmodel.ReqContext) string {
 	folderUID := strings.TrimSpace(c.Req.Header.Get(folderUIDHeader))
 	if folder.IsRootFolderUID(folderUID) {
-		return folder.LegacyRootFolderUID // empty string
+		return folder.LegacyRootFolderUID // empty string // nolint:staticcheck
 	}
 	return folderUID
 }
