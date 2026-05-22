@@ -212,7 +212,7 @@ export function searchHitsToDashboardSearchHits(searchHits: SearchHit[]): Dashbo
       sortMeta: 0, // Default value for deleted items
     };
 
-    if (hit.folder && !isRootFolderUID(hit.folder)) {
+    if (!isRootFolderUID(hit.folder)) {
       dashboardHit.folderUid = hit.folder;
     }
 

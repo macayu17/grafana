@@ -272,7 +272,7 @@ export class UnifiedSearcher implements GrafanaSearcher {
       // in locationInfo as a real folder — the dashboard isn't inaccessible,
       // it's at the root. Collapse the root sentinels to "general" so it
       // renders under the synthetic root.
-      if (hit.folder === undefined || isRootFolderUID(hit.folder)) {
+      if (isRootFolderUID(hit.folder)) {
         return { ...hit, folder: 'general' };
       }
 
@@ -294,7 +294,7 @@ export class UnifiedSearcher implements GrafanaSearcher {
       // Root sentinels (e.g. apistore-stamped "root") are never in
       // locationInfo because the root folder is synthetic. Treat them as
       // present so we don't pointlessly reload + remap to "Shared with me".
-      if (hit.folder === undefined || isRootFolderUID(hit.folder)) {
+      if (isRootFolderUID(hit.folder)) {
         return false;
       }
       return locationInfo[hit.folder] === undefined;
